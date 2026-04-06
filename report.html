@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='UTF-8'>
+<meta name='viewport' content='width=device-width,initial-scale=1'>
+<title>Paper Trading Report — Weekly</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#080b12;color:#e2e8f0;padding:24px;font-size:14px}
+h1{font-size:20px;font-weight:700;margin-bottom:4px}
+.sub{color:#64748b;font-size:12px;margin-bottom:28px}
+.section{margin-bottom:28px}
+.slabel{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:12px}
+.cards{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+.card{background:#0f1320;border:1px solid #252d45;border-radius:12px;padding:18px;min-width:200px;flex:1}
+.coin{font-size:20px;font-weight:800;margin-bottom:8px}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;margin-bottom:12px}
+.badge.buy{background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.3)}
+.badge.flat{background:#1d2540;color:#64748b;border:1px solid #252d45}
+.stat-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(37,45,69,.5);font-size:13px}
+.stat-row:last-child{border-bottom:none}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px}
+.metric{background:#0f1320;border:1px solid #252d45;border-radius:10px;padding:14px;text-align:center}
+.metric .num{font-size:22px;font-weight:700;margin-bottom:4px}
+.metric .lbl{font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.5px}
+.twrap{overflow-x:auto;border-radius:10px;border:1px solid #252d45}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead tr{background:#0f1320}
+th{padding:10px 14px;text-align:left;color:#64748b;font-weight:500;font-size:11px;text-transform:uppercase;border-bottom:1px solid #252d45}
+td{padding:10px 14px;border-bottom:1px solid rgba(37,45,69,.4)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(29,37,64,.4)}
+.portfolio-val{font-size:36px;font-weight:800;color:#10b981;margin:8px 0}
+.portfolio-ret{font-size:18px;color:#10b981}
+footer{margin-top:32px;text-align:center;font-size:11px;color:#475569}
+</style>
+</head>
+<body>
+
+<h1>Paper Trading Report — Weekly</h1>
+<div class='sub'>Generated: 2026-04-06 17:34 UTC</div>
+
+<div class='section'>
+  <div class='slabel'>Portfolio Value</div>
+  <div class='portfolio-val'>$3,000.00</div>
+  <div class='portfolio-ret'>+0.00% since start
+    ($0.00
+    profit)</div>
+</div>
+
+<div class='section'>
+  <div class='slabel'>Position Status</div>
+  <div class='cards'><div class='card'>
+              <div class='coin' style='color:#f59e0b'>BTC</div>
+              <div class='badge flat'>FLAT</div>
+              <div class='stat-row'><span>Available cash</span><span>$1000.00</span></div>
+            </div><div class='card'>
+              <div class='coin' style='color:#627eea'>ETH</div>
+              <div class='badge flat'>FLAT</div>
+              <div class='stat-row'><span>Available cash</span><span>$1000.00</span></div>
+            </div><div class='card'>
+              <div class='coin' style='color:#10b981'>SOL</div>
+              <div class='badge flat'>FLAT</div>
+              <div class='stat-row'><span>Available cash</span><span>$1000.00</span></div>
+            </div></div>
+</div>
+
+<div class='section'>
+  <div class='slabel'>Weekly Closed Trades</div>
+  <div class='twrap'>
+    <table>
+      <thead><tr>
+        <th>Date</th><th>Coin</th><th>Exit Price</th>
+        <th>P&amp;L ($)</th><th>P&amp;L (%)</th>
+        <th>Confidence</th><th>Kelly</th><th>Reason</th>
+      </tr></thead>
+      <tbody><tr><td colspan='8' style='text-align:center;color:#64748b;padding:20px'>No trades yet</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<footer>
+  Crypto Paper Trader &nbsp;·&nbsp; Not financial advice &nbsp;·&nbsp; 2026-04-06 17:34 UTC
+</footer>
+</body>
+</html>

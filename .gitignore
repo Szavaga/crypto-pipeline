@@ -1,0 +1,22 @@
+# ── Secrets ───────────────────────────────────────────────────────────────────
+.env
+
+# ── Generated data (re-created by running the pipeline) ───────────────────────
+data/
+logs/
+
+# ── Trained models (large binary files, re-created by train-model.py) ─────────
+models/
+
+# ── Python cache ──────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+
+# ── Backtest output ───────────────────────────────────────────────────────────
+backtest/
+
+# ── OS / editor noise ─────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
