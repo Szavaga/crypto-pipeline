@@ -41,7 +41,7 @@ POSITIONS_PATH = os.path.join(DATA_DIR, "testnet_positions.json")
 LEDGER_PATH    = os.path.join(DATA_DIR, "testnet_ledger.csv")
 SIGNAL_LOG     = os.path.join(DATA_DIR, "signal_log.csv")
 
-COINS        = ["ETH"]                     # Start with ETH (best Profit Factor 2.93)
+COINS        = ["ETH", "BTC", "SOL"]
 COIN_SYMBOLS = {"ETH": "ETHUSDT"}
 
 INITIAL_CAPITAL = 200.0   # USDT allocated per coin on testnet
