@@ -42,10 +42,11 @@ LEDGER_PATH    = os.path.join(DATA_DIR, "testnet_ledger.csv")
 SIGNAL_LOG     = os.path.join(DATA_DIR, "signal_log.csv")
 
 COINS        = ["ETH", "BTC", "SOL"]
-COIN_SYMBOLS = {"ETH": "ETHUSDT"}
+COIN_SYMBOLS = {"ETH": "ETHUSDT", "BTC": "BTCUSDT", "SOL": "SOLUSDT"}
 
 INITIAL_CAPITAL = 200.0   # USDT allocated per coin on testnet
-COMMISSION      = 0.001   # 0.1% Binance fee
+COMMISSION      = 0.001   # 0.1% Binance fee (per side)
+SLIPPAGE_PCT    = 0.0005  # 0.05% market-order slippage (testnet book is thin vs mainnet)
 
 SL_PCT         = 0.04     # 4% stop-loss
 TP_PCT         = 0.08     # 8% take-profit (2:1 R/R)
@@ -597,7 +598,7 @@ def execute_exits_by_signal(positions: dict, signals: dict,
             # Position may be stuck — leave in_position=True for manual review
             continue
 
-        exit_price = fill["avg_price"]
+        exit_price = fill["avg_price"] * (1 - SLIPPAGE_PCT)  # worst-case fill on sell
         exit_qty   = fill["executed_qty"]
         exit_value = exit_qty * exit_price
         commission = exit_value * COMMISSION
@@ -645,7 +646,7 @@ def execute_exits_by_signal(positions: dict, signals: dict,
 
 def execute_entries(positions: dict, signals: dict, ledger: pd.DataFrame,
                     today: str, api_key: str, secret: str,
-                    lot_info: dict) -> tuple:
+                    lot_info_by_coin: dict) -> tuple:
     """
     For each coin with a BUY signal and no open position:
     1. Calculate Kelly-sized position
@@ -679,6 +680,7 @@ def execute_entries(positions: dict, signals: dict, ledger: pd.DataFrame,
             print(f"  —  {coin} {status} (prob_up={prob_up:.1f}%)  balance=${pos['balance']:.2f}")
             continue
 
+        lot_info = lot_info_by_coin.get(coin, {})
         balance = pos["balance"]
         if balance < lot_info.get("min_notional", 10.0):
             print(f"  ⚠  {coin} balance ${balance:.2f} too low — skipping")
@@ -717,11 +719,11 @@ def execute_entries(positions: dict, signals: dict, ledger: pd.DataFrame,
             print(f"  ✗  {coin} market buy failed: {e}")
             continue
 
-        entry_price  = buy_fill["avg_price"]
+        entry_price  = buy_fill["avg_price"] * (1 + SLIPPAGE_PCT)  # worst-case fill vs quote
         executed_qty = buy_fill["executed_qty"]
         entry_cost   = executed_qty * entry_price
         commission   = entry_cost * COMMISSION
-        net_cost     = entry_cost + commission  # total cash spent
+        net_cost     = entry_cost + commission  # total cash spent (includes slippage + fee)
 
         # Calculate OCO prices
         tick_size = lot_info["tick_size"]
@@ -886,9 +888,6 @@ def main():
         print(f"  {symbol}: stepSize={info['step_size']}  "
               f"minNotional=${info['min_notional']}")
 
-    # Use first coin's lot_info for execute_entries (single coin for now)
-    lot_info = lot_info_by_coin.get(COINS[0], {})
-
     print("\n  Checking OCO fills (SL/TP)...")
     fills = check_oco_fills(positions, api_key, secret)
     if fills:
@@ -904,7 +903,7 @@ def main():
 
         print("\n  Checking signal entries...")
         positions, ledger = execute_entries(
-            positions, signals, ledger, today, api_key, secret, lot_info
+            positions, signals, ledger, today, api_key, secret, lot_info_by_coin
         )
 
     # Save state
