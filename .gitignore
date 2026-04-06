@@ -1,20 +1,29 @@
 # ── Secrets ───────────────────────────────────────────────────────────────────
 .env
 
-# ── Generated data (re-created by running the pipeline) ───────────────────────
-data/
-logs/
+# ── Large generated data (re-created every run) ───────────────────────────────
+data/*
+!data/paper_ledger.csv
+!data/testnet_ledger.csv
+!data/paper_positions.json
+!data/testnet_positions.json
+!data/paper_summary.json
+!data/testnet_summary.json
+!data/signal_log.csv
+!data/dashboard_data.json
 
-# ── Trained models (large binary files, re-created by train-model.py) ─────────
-models/
+# ── Models — track pkl and charts, exclude old single-model files ──────────────
+models/*
+!models/*_ensemble.pkl
+!models/*_results.png
+
+# ── Backtest output ───────────────────────────────────────────────────────────
+backtest/
 
 # ── Python cache ──────────────────────────────────────────────────────────────
 __pycache__/
 *.pyc
 *.pyo
-
-# ── Backtest output ───────────────────────────────────────────────────────────
-backtest/
 
 # ── OS / editor noise ─────────────────────────────────────────────────────────
 .DS_Store

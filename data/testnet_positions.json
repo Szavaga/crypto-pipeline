@@ -1,0 +1,16 @@
+{
+  "ETH": {
+    "in_position": false,
+    "entry_price": 0.0,
+    "quantity": 0.0,
+    "value_usdt": 0.0,
+    "entry_date": "2026-04-05",
+    "entry_order_id": "",
+    "oco_order_list_id": -1,
+    "sl_price": 0.0,
+    "tp_price": 0.0,
+    "confidence": 56.2,
+    "kelly_pct": 10.0,
+    "balance": 200.65964604799998
+  }
+}

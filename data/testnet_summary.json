@@ -1,0 +1,15 @@
+{
+  "updated": "2026-04-06 17:34 UTC",
+  "today": "2026-04-06",
+  "initial": 200.0,
+  "balance": 200.65964604799998,
+  "coins": {
+    "ETH": {
+      "in_position": false,
+      "balance": 200.65964604799998,
+      "entry_price": 0.0,
+      "sl_price": 0.0,
+      "tp_price": 0.0
+    }
+  }
+}

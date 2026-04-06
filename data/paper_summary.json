@@ -1,0 +1,51 @@
+{
+  "updated": "2026-04-06 17:33 UTC",
+  "today": "2026-04-06",
+  "summary": {
+    "positions": [
+      {
+        "coin": "BTC",
+        "status": "FLAT",
+        "entry_price": 0,
+        "current_price": 0,
+        "quantity": 0,
+        "invested": 0,
+        "current_val": 0,
+        "unrealized": 0,
+        "unreal_pct": 0,
+        "cash": 1000.0
+      },
+      {
+        "coin": "ETH",
+        "status": "FLAT",
+        "entry_price": 0,
+        "current_price": 0,
+        "quantity": 0,
+        "invested": 0,
+        "current_val": 0,
+        "unrealized": 0,
+        "unreal_pct": 0,
+        "cash": 1000.0
+      },
+      {
+        "coin": "SOL",
+        "status": "FLAT",
+        "entry_price": 0,
+        "current_price": 0,
+        "quantity": 0,
+        "invested": 0,
+        "current_val": 0,
+        "unrealized": 0,
+        "unreal_pct": 0,
+        "cash": 1000.0
+      }
+    ],
+    "total_cash": 3000.0,
+    "total_invested": 0.0,
+    "total_unrealized": 0.0,
+    "total_portfolio": 3000.0,
+    "total_return": 0.0,
+    "initial": 3000.0
+  },
+  "initial": 3000.0
+}

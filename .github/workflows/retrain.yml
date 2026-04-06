@@ -1,0 +1,78 @@
+name: Weekly Retrain
+
+on:
+  schedule:
+    - cron: '0 2 * * 0'    # 02:00 UTC every Sunday
+  workflow_dispatch:        # manual trigger from GitHub UI
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180    # retraining 3 coins × 100 Optuna trials takes time
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install requests pandas pandas-ta xgboost lightgbm \
+                      scikit-learn optuna matplotlib
+
+      - name: Create .env
+        run: |
+          echo "TESTNET_API_KEY=${{ secrets.TESTNET_API_KEY }}" >> .env
+          echo "TESTNET_SECRET_KEY=${{ secrets.TESTNET_SECRET_KEY }}" >> .env
+
+      - name: Create data directory
+        run: mkdir -p data models
+
+      - name: Fetch market data
+        run: python crypto-pipeline.py
+
+      - name: Feature engineering
+        run: python feature-engineering.py
+
+      - name: Retrain models
+        run: python train-model.py
+
+      - name: Generate signals with new models
+        run: python predict-today.py
+
+      - name: Paper trading
+        run: python paper-trader.py
+
+      - name: Testnet trading
+        run: python testnet-trader.py
+
+      - name: Update dashboard data
+        run: python dashboard.py
+
+      - name: Commit updated models and state
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add \
+            models/*_ensemble.pkl \
+            models/*_results.png \
+            data/paper_ledger.csv \
+            data/testnet_ledger.csv \
+            data/paper_positions.json \
+            data/testnet_positions.json \
+            data/paper_summary.json \
+            data/testnet_summary.json \
+            data/signal_log.csv \
+            data/dashboard_data.json \
+            2>/dev/null || true
+          git diff --staged --quiet || \
+            git commit -m "Weekly retrain: $(date -u '+%Y-%m-%d')"
+          git push
