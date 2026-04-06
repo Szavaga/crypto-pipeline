@@ -7,3 +7,4 @@ scikit-learn
 optuna
 matplotlib
 flask
+python-dotenv
