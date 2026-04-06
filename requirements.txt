@@ -1,5 +1,5 @@
 requests
-pandas
+pandas<3.0
 pandas-ta
 xgboost
 lightgbm
