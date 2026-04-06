@@ -1,0 +1,9 @@
+requests
+pandas
+pandas-ta
+xgboost
+lightgbm
+scikit-learn
+optuna
+matplotlib
+flask
