@@ -33,49 +33,49 @@ def notify_signals(signals: list):
     if not signals:
         return
 
-    lines = ["<b>📊 Daily Crypto Signals</b>"]
-    lines.append(f"<i>{signals[0].get('date', '')}</i>")
-    lines.append("")
+    date_str  = signals[0].get("date", "")
+    buy_signals = [s for s in signals if "BUY" in s.get("signal", "")]
 
-    for s in signals:
-        coin      = s.get("coin", "")
-        signal    = s.get("signal", "")
-        prob_up   = s.get("prob_up", 0)
-        kelly     = s.get("kelly_pct", 0)
-        mtf       = s.get("mtf_score", 0)
-        conf      = s.get("confidence", "")
-        price     = s.get("price", 0)
+    # 1. Always send a heartbeat summary
+    if buy_signals:
+        coins = ", ".join(s["coin"] for s in buy_signals)
+        heartbeat = f"✅ Pipeline ran — {date_str}\n🟢 BUY signals: {coins}"
+    else:
+        heartbeat = f"✅ Pipeline ran — {date_str}\nNo buy signals today."
+    send_message(heartbeat)
 
-        if "BUY" in signal:
-            icon = "🟢"
-        elif "OUT" in signal:
-            icon = "🔴"
-        else:
-            icon = "⚪"
+    # 2. Send a detailed alert for each BUY signal
+    for s in buy_signals:
+        coin    = s.get("coin", "")
+        signal  = s.get("signal", "")
+        prob_up = s.get("prob_up", 0)
+        kelly   = s.get("kelly_pct", 0)
+        mtf     = s.get("mtf_score", 0)
+        conf    = s.get("confidence", "")
+        price   = s.get("price", 0)
+        fg      = s.get("fear_greed", "")
+        fg_lbl  = s.get("fg_label", "")
+        funding = s.get("funding", "")
+        btc_dom = s.get("btc_dom", "")
 
-        lines.append(f"{icon} <b>{coin}</b> — {signal}")
-        lines.append(f"   Price: <b>${price:,.2f}</b>")
-        lines.append(f"   Confidence: {prob_up:.1f}% UP  [{conf}]")
-        lines.append(f"   MTF: {mtf}/3 timeframes bullish")
-        if kelly > 0:
-            lines.append(f"   Position: <b>{kelly:.1f}% of capital</b>")
+        lines = [f"🚨 <b>{coin} — {signal}</b>"]
+        lines.append(f"<i>{date_str}</i>")
         lines.append("")
+        lines.append(f"Price: <b>${price:,.2f}</b>")
+        lines.append(f"Confidence: {prob_up:.1f}% UP  [{conf}]")
+        lines.append(f"MTF: {mtf}/3 timeframes bullish")
+        if kelly > 0:
+            lines.append(f"Position: <b>{kelly:.1f}% of capital</b>")
+        lines.append("")
+        if fg:
+            lines.append(f"😨 Fear &amp; Greed: <b>{fg}</b> ({fg_lbl})")
+        if funding:
+            lines.append(f"💰 Funding Rate: {float(funding):.4f}%")
+        if btc_dom:
+            lines.append(f"₿ BTC Dominance: {float(btc_dom):.1f}%")
+        lines.append("")
+        lines.append("<i>⚠ Model signals only — not financial advice.</i>")
 
-    # Market context
-    fg      = signals[0].get("fear_greed", "")
-    fg_lbl  = signals[0].get("fg_label", "")
-    funding = signals[0].get("funding", "")
-    btc_dom = signals[0].get("btc_dom", "")
+        send_message("\n".join(lines))
 
-    if fg:
-        lines.append(f"😨 Fear &amp; Greed: <b>{fg}</b> ({fg_lbl})")
-    if funding:
-        lines.append(f"💰 Funding Rate: {float(funding):.4f}%")
-    if btc_dom:
-        lines.append(f"₿ BTC Dominance: {float(btc_dom):.1f}%")
-
-    lines.append("")
-    lines.append("<i>⚠ Model signals only — not financial advice.</i>")
-
-    send_message("\n".join(lines))
     print("  ✓  Telegram notification sent")
