@@ -1,5 +1,5 @@
 {
-  "updated": "2026-04-06 19:46 UTC",
+  "updated": "2026-04-07 03:39 UTC",
   "prices": {
     "BTC": [],
     "ETH": [],
@@ -315,6 +315,11 @@
   },
   "fg": [
     {
+      "t": 1775520000000,
+      "v": 11,
+      "l": "Extreme Fear"
+    },
+    {
       "t": 1775433600000,
       "v": 13,
       "l": "Extreme Fear"
@@ -608,18 +613,13 @@
       "t": 1770422400000,
       "v": 6,
       "l": "Extreme Fear"
-    },
-    {
-      "t": 1770336000000,
-      "v": 9,
-      "l": "Extreme Fear"
     }
   ],
   "glbl": {
-    "btc_dom": 56.7,
+    "btc_dom": 56.6,
     "eth_dom": 10.5,
-    "total_mcap": 2460791776009.879,
-    "mcap_change": 2.88
+    "total_mcap": 2430094314355.7207,
+    "mcap_change": -0.63
   },
   "eth_fund": 0.0,
   "btc_fund": 0.0
