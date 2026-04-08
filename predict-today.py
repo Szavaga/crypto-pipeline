@@ -394,10 +394,12 @@ def main():
         spec = importlib.util.spec_from_file_location("tg", "telegram_notify.py")
         tg   = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(tg)
-        if tg.TELEGRAM_TOKEN != "IDE_A_BOT_TOKEN":
+        if tg.TELEGRAM_TOKEN:
             tg.notify_signals(signals)
-    except:
-        pass
+        else:
+            print("  ⚠  Telegram skipped — TELEGRAM_TOKEN not set")
+    except Exception as e:
+        print(f"  ⚠  Telegram failed: {e}")
 
 
 if __name__ == "__main__":
