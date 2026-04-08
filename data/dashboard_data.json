@@ -1,5 +1,5 @@
 {
-  "updated": "2026-04-08 03:41 UTC",
+  "updated": "2026-04-08 08:51 UTC",
   "prices": {
     "BTC": [],
     "ETH": [],
@@ -706,10 +706,10 @@
     }
   ],
   "glbl": {
-    "btc_dom": 56.7,
-    "eth_dom": 10.7,
-    "total_mcap": 2518249480924.378,
-    "mcap_change": 3.62
+    "btc_dom": 56.8,
+    "eth_dom": 10.8,
+    "total_mcap": 2528154898409.229,
+    "mcap_change": 3.79
   },
   "eth_fund": 0.0,
   "btc_fund": 0.0
