@@ -1,5 +1,5 @@
 {
-  "updated": "2026-04-07 03:39 UTC",
+  "updated": "2026-04-08 03:41 UTC",
   "prices": {
     "BTC": [],
     "ETH": [],
@@ -26,6 +26,36 @@
         "fg_label": "Extreme Fear",
         "funding": 0.000423,
         "btc_dom": 56.64048
+      },
+      {
+        "date": "2026-04-06",
+        "coin": "BTC",
+        "price": 69666.3,
+        "signal": "STAY OUT",
+        "prob_up": 17.3,
+        "prob_down": 82.7,
+        "kelly_pct": 0.0,
+        "confidence": "Strong (bearish)",
+        "mtf_score": 2,
+        "fear_greed": 13,
+        "fg_label": "Extreme Fear",
+        "funding": 0.000423,
+        "btc_dom": 56.711912
+      },
+      {
+        "date": "2026-04-06",
+        "coin": "BTC",
+        "price": 69688.13,
+        "signal": "STAY OUT",
+        "prob_up": 17.3,
+        "prob_down": 82.7,
+        "kelly_pct": 0.0,
+        "confidence": "Strong (bearish)",
+        "mtf_score": 2,
+        "fear_greed": 13,
+        "fg_label": "Extreme Fear",
+        "funding": 0.000423,
+        "btc_dom": 56.689299
       },
       {
         "date": "2026-04-05",
@@ -105,6 +135,36 @@
         "btc_dom": 56.64048
       },
       {
+        "date": "2026-04-06",
+        "coin": "ETH",
+        "price": 2142.41,
+        "signal": "STAY OUT",
+        "prob_up": 8.1,
+        "prob_down": 91.9,
+        "kelly_pct": 0.0,
+        "confidence": "Strong (bearish)",
+        "mtf_score": 3,
+        "fear_greed": 13,
+        "fg_label": "Extreme Fear",
+        "funding": 0.000423,
+        "btc_dom": 56.711912
+      },
+      {
+        "date": "2026-04-06",
+        "coin": "ETH",
+        "price": 2143.7,
+        "signal": "STAY OUT",
+        "prob_up": 8.1,
+        "prob_down": 91.9,
+        "kelly_pct": 0.0,
+        "confidence": "Strong (bearish)",
+        "mtf_score": 3,
+        "fear_greed": 13,
+        "fg_label": "Extreme Fear",
+        "funding": 0.000423,
+        "btc_dom": 56.689299
+      },
+      {
         "date": "2026-04-05",
         "coin": "ETH",
         "price": 2027.19,
@@ -180,6 +240,36 @@
         "fg_label": "Extreme Fear",
         "funding": 0.000423,
         "btc_dom": 56.64048
+      },
+      {
+        "date": "2026-04-06",
+        "coin": "SOL",
+        "price": 81.96,
+        "signal": "SKIP - low confidence",
+        "prob_up": 50.4,
+        "prob_down": 49.6,
+        "kelly_pct": 0.0,
+        "confidence": "Too weak to act",
+        "mtf_score": 2,
+        "fear_greed": 13,
+        "fg_label": "Extreme Fear",
+        "funding": 0.000423,
+        "btc_dom": 56.711912
+      },
+      {
+        "date": "2026-04-06",
+        "coin": "SOL",
+        "price": 82.0,
+        "signal": "SKIP - low confidence",
+        "prob_up": 50.4,
+        "prob_down": 49.6,
+        "kelly_pct": 0.0,
+        "confidence": "Too weak to act",
+        "mtf_score": 2,
+        "fear_greed": 13,
+        "fg_label": "Extreme Fear",
+        "funding": 0.000423,
+        "btc_dom": 56.689299
       },
       {
         "date": "2026-04-05",
@@ -292,28 +382,33 @@
   },
   "stats": {
     "BTC": {
-      "total": 5,
+      "total": 7,
       "buys": 1,
-      "stays": 2,
+      "stays": 4,
       "skips": 2,
-      "avg_conf": 45.5
+      "avg_conf": 37.5
     },
     "ETH": {
-      "total": 5,
+      "total": 7,
       "buys": 2,
-      "stays": 3,
+      "stays": 5,
       "skips": 0,
-      "avg_conf": 37.7
+      "avg_conf": 29.2
     },
     "SOL": {
-      "total": 5,
+      "total": 7,
       "buys": 1,
       "stays": 3,
-      "skips": 1,
-      "avg_conf": 48.3
+      "skips": 3,
+      "avg_conf": 48.9
     }
   },
   "fg": [
+    {
+      "t": 1775606400000,
+      "v": 17,
+      "l": "Extreme Fear"
+    },
     {
       "t": 1775520000000,
       "v": 11,
@@ -608,18 +703,13 @@
       "t": 1770508800000,
       "v": 7,
       "l": "Extreme Fear"
-    },
-    {
-      "t": 1770422400000,
-      "v": 6,
-      "l": "Extreme Fear"
     }
   ],
   "glbl": {
-    "btc_dom": 56.6,
-    "eth_dom": 10.5,
-    "total_mcap": 2430094314355.7207,
-    "mcap_change": -0.63
+    "btc_dom": 56.7,
+    "eth_dom": 10.7,
+    "total_mcap": 2518249480924.378,
+    "mcap_change": 3.62
   },
   "eth_fund": 0.0,
   "btc_fund": 0.0
