@@ -34,28 +34,77 @@ MODEL_DIR   = "models"
 CONF_THRESH = 0.55
 
 COINS = {"BTC": "BTCUSDT", "ETH": "ETHUSDT", "SOL": "SOLUSDT"}
+# yfinance ticker map (used as fallback when Binance returns 451/geo-block)
+YFINANCE_MAP = {"BTCUSDT": "BTC-USD", "ETHUSDT": "ETH-USD", "SOLUSDT": "SOL-USD"}
 BINANCE_URL = "https://api.binance.com/api/v3/klines"
 FAPI_URL    = "https://fapi.binance.com/fapi/v1/fundingRate"
 
 
 # ── Fetch helpers ─────────────────────────────────────────────────────────────
 
+def _fetch_yfinance(symbol: str, interval: str, limit: int) -> pd.DataFrame:
+    """Fallback data source when Binance is geo-blocked (HTTP 451)."""
+    import yfinance as yf
+
+    yf_symbol = YFINANCE_MAP.get(symbol, symbol)
+
+    # yfinance doesn't have 4h — fetch 1h and resample
+    if interval == "4h":
+        fetch_interval = "1h"
+        resample = True
+    else:
+        fetch_interval = interval
+        resample = False
+
+    # period needed to cover `limit` candles
+    period_map = {"1h": "30d", "1d": "365d"}
+    period = period_map.get(fetch_interval, "60d")
+
+    ticker = yf.Ticker(yf_symbol)
+    df = ticker.history(period=period, interval=fetch_interval, auto_adjust=True)
+
+    if df.empty:
+        raise RuntimeError(f"yfinance returned no data for {yf_symbol}")
+
+    df = df.rename(columns={"Open": "open", "High": "high",
+                             "Low": "low", "Close": "close", "Volume": "volume"})
+    df.index = pd.to_datetime(df.index, utc=True).tz_localize(None)
+    df["datetime"] = df.index
+    df["date"] = df["datetime"].dt.date
+
+    if resample:
+        df = df.resample("4h", on="datetime").agg(
+            open=("open", "first"), high=("high", "max"),
+            low=("low", "min"), close=("close", "last"),
+            volume=("volume", "sum")
+        ).dropna().reset_index()
+        df["date"] = df["datetime"].dt.date
+
+    df = df[["datetime", "date", "open", "high", "low", "close", "volume"]]
+    return df.tail(limit).reset_index(drop=True)
+
+
 def fetch_candles(symbol, interval, limit=150):
-    resp = requests.get(BINANCE_URL,
-        params={"symbol": symbol, "interval": interval, "limit": limit},
-        timeout=15)
-    if resp.status_code != 200:
-        raise RuntimeError(f"Binance {resp.status_code}")
-    raw = resp.json()
-    df  = pd.DataFrame(raw, columns=[
-        "ts","open","high","low","close","volume",
-        "ct","qv","trades","tb","tq","ignore"
-    ])
-    df["datetime"] = pd.to_datetime(df["ts"].astype(int), unit="ms")
-    df["date"]     = df["datetime"].dt.date
-    for c in ["open","high","low","close","volume"]:
-        df[c] = df[c].astype(float)
-    return df[["datetime","date","open","high","low","close","volume"]].reset_index(drop=True)
+    try:
+        resp = requests.get(BINANCE_URL,
+            params={"symbol": symbol, "interval": interval, "limit": limit},
+            timeout=15)
+        if resp.status_code == 451:
+            raise RuntimeError("geo-blocked")
+        if resp.status_code != 200:
+            raise RuntimeError(f"Binance {resp.status_code}")
+        raw = resp.json()
+        df  = pd.DataFrame(raw, columns=[
+            "ts","open","high","low","close","volume",
+            "ct","qv","trades","tb","tq","ignore"
+        ])
+        df["datetime"] = pd.to_datetime(df["ts"].astype(int), unit="ms")
+        df["date"]     = df["datetime"].dt.date
+        for c in ["open","high","low","close","volume"]:
+            df[c] = df[c].astype(float)
+        return df[["datetime","date","open","high","low","close","volume"]].reset_index(drop=True)
+    except RuntimeError:
+        return _fetch_yfinance(symbol, interval, limit)
 
 
 def get_fear_greed():
