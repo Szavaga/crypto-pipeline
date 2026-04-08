@@ -69,4 +69,5 @@ jobs:
             2>/dev/null || true
           git diff --staged --quiet || \
             git commit -m "Daily run: $(date -u '+%Y-%m-%d')"
+          git pull --rebase origin master
           git push
