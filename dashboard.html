@@ -726,19 +726,23 @@ function buildPerfCard(id, data, label, tagCls){
   const wr = metrics.win_rate||0;
   const pf = metrics.profit_factor||0;
 
-  // Testnet open position
+  // Testnet open positions (all coins)
   let posHTML = "";
   if(id==="perf-testnet"){
-    const eth = (summary.coins||{})["ETH"]||{};
-    if(eth.in_position){
-      posHTML = `<hr class="perf-divider">
-        <div class="perf-pos-row"><span class="perf-pos-lbl">ETH Position</span><span style="color:var(--green);font-weight:700">OPEN</span></div>
-        <div class="perf-pos-row"><span class="perf-pos-lbl">Entry</span><span>$${Number(eth.entry_price||0).toLocaleString("en-US",{maximumFractionDigits:2})}</span></div>
-        ${eth.sl_price>0?`<div class="perf-pos-row"><span class="perf-pos-lbl">Stop Loss</span><span style="color:var(--red)">$${Number(eth.sl_price).toLocaleString("en-US",{maximumFractionDigits:2})}</span></div>`:""}
-        ${eth.tp_price>0?`<div class="perf-pos-row"><span class="perf-pos-lbl">Take Profit</span><span style="color:var(--green)">$${Number(eth.tp_price).toLocaleString("en-US",{maximumFractionDigits:2})}</span></div>`:""}`;
-    } else {
-      posHTML = `<hr class="perf-divider"><div class="perf-no-pos">No open positions</div>`;
-    }
+    const coins = summary.coins||{};
+    const openRows = ["BTC","ETH","SOL"].map(coin=>{
+      const p = coins[coin]||{};
+      if(!p.in_position) return `<div class="perf-pos-row"><span class="perf-pos-lbl" style="color:${COIN_COLORS[coin]||"#fff"}">${coin}</span><span style="color:var(--dim)">FLAT &nbsp; $${Number(p.balance||0).toFixed(2)}</span></div>`;
+      const fmt = n => Number(n).toLocaleString("en-US",{maximumFractionDigits:2});
+      return `
+        <div class="perf-pos-row"><span class="perf-pos-lbl" style="color:${COIN_COLORS[coin]||"#fff"}">${coin}</span><span style="color:var(--green);font-weight:700">IN POSITION</span></div>
+        <div class="perf-pos-row"><span class="perf-pos-lbl">Bet amount</span><span>$${Number(p.value_usdt||0).toFixed(2)} &nbsp;<span style="color:var(--muted);font-size:10px">(${Number(p.kelly_pct||0).toFixed(1)}% Kelly, ${Number(p.confidence||0).toFixed(1)}% conf)</span></span></div>
+        <div class="perf-pos-row"><span class="perf-pos-lbl">Entry</span><span>$${fmt(p.entry_price)} &nbsp;<span style="color:var(--muted);font-size:10px">${p.entry_date||""}</span></span></div>
+        <div class="perf-pos-row"><span class="perf-pos-lbl" style="color:var(--red)">Stop Loss</span><span style="color:var(--red)">$${fmt(p.sl_price)}</span></div>
+        <div class="perf-pos-row"><span class="perf-pos-lbl" style="color:var(--green)">Take Profit</span><span style="color:var(--green)">$${fmt(p.tp_price)}</span></div>
+        <div class="perf-pos-row"><span class="perf-pos-lbl">Cash left</span><span>$${Number(p.balance||0).toFixed(2)}</span></div>`;
+    }).join("");
+    posHTML = `<hr class="perf-divider">${openRows}`;
   }
 
   // Last 3 closed trades

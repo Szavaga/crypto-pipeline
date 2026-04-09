@@ -832,6 +832,11 @@ def save_summary(positions: dict, ledger: pd.DataFrame, today: str):
                 "entry_price":  positions[coin].get("entry_price", 0),
                 "sl_price":     positions[coin].get("sl_price", 0),
                 "tp_price":     positions[coin].get("tp_price", 0),
+                "quantity":     positions[coin].get("quantity", 0),
+                "value_usdt":   positions[coin].get("value_usdt", 0),
+                "kelly_pct":    positions[coin].get("kelly_pct", 0),
+                "confidence":   positions[coin].get("confidence", 0),
+                "entry_date":   positions[coin].get("entry_date", ""),
             }
             for coin in COINS
         },
