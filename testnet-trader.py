@@ -240,28 +240,34 @@ def load_positions() -> dict:
     Load testnet positions from JSON. Initializes fresh state if file missing.
     Key difference from paper_positions.json: adds entry_order_id,
     oco_order_list_id, sl_price, tp_price for real order tracking.
+    Any coins in COINS but missing from the saved file get initialized fresh.
     """
+    default = lambda: {
+        "in_position":       False,
+        "entry_price":       0.0,
+        "quantity":          0.0,
+        "value_usdt":        0.0,
+        "entry_date":        "",
+        "entry_order_id":    "",
+        "oco_order_list_id": -1,
+        "sl_price":          0.0,
+        "tp_price":          0.0,
+        "confidence":        0.0,
+        "kelly_pct":         0.0,
+        "balance":           INITIAL_CAPITAL,
+    }
+
     if os.path.exists(POSITIONS_PATH):
         with open(POSITIONS_PATH, "r") as f:
-            return json.load(f)
+            positions = json.load(f)
+        # Add any newly configured coins that aren't saved yet
+        for coin in COINS:
+            if coin not in positions:
+                print(f"  ℹ  {coin} not in positions file — initializing with ${INITIAL_CAPITAL}")
+                positions[coin] = default()
+        return positions
 
-    return {
-        coin: {
-            "in_position":       False,
-            "entry_price":       0.0,
-            "quantity":          0.0,
-            "value_usdt":        0.0,   # cost basis in USDT
-            "entry_date":        "",
-            "entry_order_id":    "",    # Binance order ID for audit
-            "oco_order_list_id": -1,    # -1 = no active OCO
-            "sl_price":          0.0,
-            "tp_price":          0.0,
-            "confidence":        0.0,
-            "kelly_pct":         0.0,
-            "balance":           INITIAL_CAPITAL,
-        }
-        for coin in COINS
-    }
+    return {coin: default() for coin in COINS}
 
 
 def save_positions(positions: dict):
