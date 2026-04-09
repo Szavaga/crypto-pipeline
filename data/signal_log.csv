@@ -29,3 +29,6 @@ date,coin,price,signal,prob_up,prob_down,kelly_pct,confidence,mtf_score,fear_gre
 2026-04-09,BTC,70941.953125,STAY OUT,43.3,56.7,0.0,Moderate (bearish),2,14,Extreme Fear,,56.99248524566587
 2026-04-09,ETH,2180.15283203125,SKIP — low confidence,45.6,54.4,0.0,Too weak to act,2,14,Extreme Fear,,56.99248524566587
 2026-04-09,SOL,82.03402709960938,BUY / HOLD,74.5,25.5,25.0,Strong,1,14,Extreme Fear,,56.99248524566587
+2026-04-09,BTC,71333.1796875,STAY OUT,43.3,56.7,0.0,Moderate (bearish),3,14,Extreme Fear,,57.063830909457394
+2026-04-09,ETH,2187.07666015625,SKIP — low confidence,45.6,54.4,0.0,Too weak to act,2,14,Extreme Fear,,57.063830909457394
+2026-04-09,SOL,82.2871322631836,BUY / HOLD,74.5,25.5,25.0,Strong,1,14,Extreme Fear,,57.063830909457394
