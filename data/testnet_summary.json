@@ -1,15 +1,44 @@
 {
-  "updated": "2026-04-06 17:34 UTC",
-  "today": "2026-04-06",
-  "initial": 200.0,
-  "balance": 200.65964604799998,
+  "updated": "2026-04-09 manual",
+  "today": "2026-04-09",
+  "initial": 600.0,
+  "balance": 600.65964604799998,
   "coins": {
     "ETH": {
       "in_position": false,
       "balance": 200.65964604799998,
       "entry_price": 0.0,
       "sl_price": 0.0,
-      "tp_price": 0.0
+      "tp_price": 0.0,
+      "quantity": 0.0,
+      "value_usdt": 0.0,
+      "kelly_pct": 0.0,
+      "confidence": 0.0,
+      "entry_date": ""
+    },
+    "BTC": {
+      "in_position": false,
+      "balance": 200.0,
+      "entry_price": 0.0,
+      "sl_price": 0.0,
+      "tp_price": 0.0,
+      "quantity": 0.0,
+      "value_usdt": 0.0,
+      "kelly_pct": 0.0,
+      "confidence": 0.0,
+      "entry_date": ""
+    },
+    "SOL": {
+      "in_position": false,
+      "balance": 200.0,
+      "entry_price": 0.0,
+      "sl_price": 0.0,
+      "tp_price": 0.0,
+      "quantity": 0.0,
+      "value_usdt": 0.0,
+      "kelly_pct": 0.0,
+      "confidence": 0.0,
+      "entry_date": ""
     }
   }
 }
