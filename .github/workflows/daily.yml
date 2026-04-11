@@ -47,10 +47,6 @@ jobs:
       - name: Paper trading
         run: python paper-trader.py
 
-      - name: Testnet trading
-        continue-on-error: true   # geo-block on testnet API fails here; rest of workflow still runs
-        run: python testnet-trader.py
-
       - name: Update dashboard data
         run: python dashboard.py
 
