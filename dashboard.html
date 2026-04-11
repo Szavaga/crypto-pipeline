@@ -303,6 +303,21 @@ footer{text-align:center;padding:20px;font-size:11px;color:var(--muted);border-t
     </div>
   </section>
 
+  <section id="positions-section" style="display:none">
+    <div class="slabel">Open Positions</div>
+    <div class="twrap">
+      <table>
+        <thead><tr>
+          <th>Coin</th><th>Entry Price</th><th>Current Price</th>
+          <th>Unrealized P&amp;L</th><th>Bet (USDT)</th><th>Kelly %</th>
+          <th>Confidence</th><th>Stop Loss</th><th>Take Profit</th>
+          <th>Entry Date</th><th>Cash left</th>
+        </tr></thead>
+        <tbody id="positions-body"></tbody>
+      </table>
+    </div>
+  </section>
+
   <section>
     <div class="slabel">ETH - Primary Signal</div>
     <div class="hero" id="eth-hero"></div>
@@ -716,7 +731,7 @@ function buildPerfCard(id, data, label, tagCls){
     const s = summary.summary||{};
     port = s.total_portfolio||0; init = s.initial||3000; ret = s.total_return||0;
   } else {
-    init = summary.initial||200;
+    init = summary.initial||600;
     port = summary.balance||init;
     ret  = ((port/init)-1)*100;
   }
@@ -771,6 +786,50 @@ function buildPerfCard(id, data, label, tagCls){
     ${posHTML}${tradesHTML}`;
 }
 
+// ── Open Positions ────────────────────────────────────────────────────────────
+function buildPositions(T, D){
+  const coins = (T.testnet&&T.testnet.summary&&T.testnet.summary.coins)||{};
+  const tbody  = document.getElementById("positions-body");
+  const sec    = document.getElementById("positions-section");
+  let anyOpen  = false;
+
+  ["BTC","ETH","SOL"].forEach(coin=>{
+    const p = coins[coin]||{};
+    if(!p.in_position) return;
+    anyOpen = true;
+
+    const curPrice  = (D.tickers[coin]&&D.tickers[coin].price)||0;
+    const entry     = p.entry_price||0;
+    const qty       = p.quantity||0;
+    const cost      = p.value_usdt||0;
+    const curVal    = qty * curPrice;
+    const unreal    = cost>0 ? curVal - cost : 0;
+    const unrealPct = cost>0 ? (unreal/cost*100) : 0;
+    const unrealCol = unreal>=0?"var(--green)":"var(--red)";
+    const slPct     = entry>0 ? ((p.sl_price-entry)/entry*100) : 0;
+    const tpPct     = entry>0 ? ((p.tp_price-entry)/entry*100) : 0;
+
+    tbody.innerHTML += `<tr>
+      <td style="font-weight:700;color:${COIN_COLORS[coin]}">${coin}</td>
+      <td>${fmt(entry)}</td>
+      <td>${curPrice?fmt(curPrice):"—"}</td>
+      <td style="color:${unrealCol};font-weight:600">${unreal>=0?"+":""}$${unreal.toFixed(2)} <span style="font-size:10px;color:${unrealCol}">(${unrealPct>=0?"+":""}${unrealPct.toFixed(2)}%)</span></td>
+      <td>$${Number(cost).toFixed(2)}</td>
+      <td style="color:var(--green)">${Number(p.kelly_pct||0).toFixed(1)}%</td>
+      <td style="color:var(--dim)">${Number(p.confidence||0).toFixed(1)}%</td>
+      <td style="color:var(--red)">${fmt(p.sl_price)} <span style="font-size:10px;color:var(--red)">(${slPct.toFixed(1)}%)</span></td>
+      <td style="color:var(--green)">${fmt(p.tp_price)} <span style="font-size:10px;color:var(--green)">(+${tpPct.toFixed(1)}%)</span></td>
+      <td style="color:var(--dim);font-size:11px">${p.entry_date||"—"}</td>
+      <td style="color:var(--dim)">$${Number(p.balance||0).toFixed(2)}</td>
+    </tr>`;
+  });
+
+  if(!anyOpen){
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:20px">Nincs nyitott pozíció</td></tr>';
+  }
+  sec.style.display = "block";
+}
+
 // Load data and render
 fetch("data/dashboard_data.json?t="+Date.now())
   .then(r=>{
@@ -792,7 +851,7 @@ fetch("data/dashboard_data.json?t="+Date.now())
     document.getElementById("loading").style.display = "none";
     document.getElementById("content").style.display = "block";
     // Load trading performance from server (gracefully skipped if not available)
-    fetch("/api/trading").then(r=>r.json()).then(T=>buildTrading(T)).catch(()=>{});
+    fetch("/api/trading").then(r=>r.json()).then(T=>{ buildTrading(T); buildPositions(T, D); }).catch(()=>{});
   })
   .catch(err=>{
     document.getElementById("loading").innerHTML =

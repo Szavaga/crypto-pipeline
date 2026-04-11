@@ -20,6 +20,7 @@ JSON_PATH   = os.path.join(DATA_DIR, "dashboard_data.json")
 BINANCE_URL = "https://api.binance.com/api/v3/klines"
 
 COINS = {"BTC": "BTCUSDT", "ETH": "ETHUSDT", "SOL": "SOLUSDT"}
+YFINANCE_MAP = {"BTCUSDT": "BTC-USD", "ETHUSDT": "ETH-USD", "SOLUSDT": "SOL-USD"}
 
 
 def clean(obj):
@@ -41,23 +42,52 @@ def clean(obj):
     return obj
 
 
+def _yf_prices(symbol, days=120):
+    """yfinance fallback for price history when Binance is geo-blocked."""
+    try:
+        import yfinance as yf
+        yf_sym = YFINANCE_MAP.get(symbol, symbol)
+        df = yf.Ticker(yf_sym).history(period=f"{days}d", interval="1d", auto_adjust=True)
+        if df.empty:
+            return []
+        return [{"t": int(ts.timestamp() * 1000),
+                 "o": round(float(r["Open"]), 4),
+                 "h": round(float(r["High"]), 4),
+                 "l": round(float(r["Low"]),  4),
+                 "c": round(float(r["Close"]),4),
+                 "v": round(float(r["Volume"]),2)}
+                for ts, r in df.iterrows()]
+    except Exception as e:
+        print(f"  ⚠  yfinance fallback failed ({symbol}): {e}")
+        return []
+
+
 def fetch_prices(symbol, days=120):
     try:
         r = requests.get(BINANCE_URL,
             params={"symbol": symbol, "interval": "1d", "limit": days},
             timeout=15)
+        if r.status_code == 451:
+            raise RuntimeError("geo-blocked")
+        if r.status_code != 200:
+            raise RuntimeError(f"HTTP {r.status_code}")
+        data = r.json()
+        if not isinstance(data, list):
+            raise RuntimeError("unexpected response")
         return [{"t": int(c[0]), "o": float(c[1]), "h": float(c[2]),
                  "l": float(c[3]), "c": float(c[4]), "v": float(c[5])}
-                for c in r.json()]
+                for c in data]
     except Exception as e:
-        print(f"  ⚠  Prices error ({symbol}): {e}")
-        return []
+        print(f"  ⚠  Binance prices ({symbol}): {e} — trying yfinance")
+        return _yf_prices(symbol, days)
 
 
 def fetch_ticker(symbol):
     try:
         r = requests.get("https://api.binance.com/api/v3/ticker/24hr",
             params={"symbol": symbol}, timeout=10)
+        if r.status_code != 200:
+            raise RuntimeError(f"HTTP {r.status_code}")
         d = r.json()
         return {
             "price":  float(d["lastPrice"]),
@@ -66,9 +96,23 @@ def fetch_ticker(symbol):
             "low":    float(d["lowPrice"]),
             "volume": float(d["quoteVolume"]),
         }
-    except Exception as e:
-        print(f"  ⚠  Ticker error ({symbol}): {e}")
-        return {}
+    except Exception:
+        # yfinance fallback for ticker
+        try:
+            import yfinance as yf
+            yf_sym = YFINANCE_MAP.get(symbol, symbol)
+            t = yf.Ticker(yf_sym)
+            info = t.fast_info
+            return {
+                "price":  round(float(info.last_price), 4),
+                "change": 0.0,
+                "high":   round(float(info.day_high), 4),
+                "low":    round(float(info.day_low),  4),
+                "volume": 0.0,
+            }
+        except Exception as e2:
+            print(f"  ⚠  Ticker error ({symbol}): {e2}")
+            return {}
 
 
 def fetch_fear_greed(limit=60):
