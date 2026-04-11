@@ -56,3 +56,6 @@ date,coin,price,signal,prob_up,prob_down,kelly_pct,confidence,mtf_score,fear_gre
 2026-04-11,BTC,73038.1953125,BUY / HOLD,55.5,44.5,12.4,Moderate,3,15,Extreme Fear,,57.25926607054046
 2026-04-11,ETH,2256.572265625,SKIP — low confidence,54.3,45.7,0.0,Too weak to act,3,15,Extreme Fear,,57.25926607054046
 2026-04-11,SOL,84.7839584350586,BUY / HOLD,85.2,14.8,25.0,Strong,2,15,Extreme Fear,,57.25926607054046
+2026-04-11,BTC,73081.3828125,SKIP — low confidence,54.7,45.3,0.0,Too weak to act,3,15,Extreme Fear,,57.25926607054046
+2026-04-11,ETH,2258.84130859375,SKIP — low confidence,54.8,45.2,0.0,Too weak to act,3,15,Extreme Fear,,57.25926607054046
+2026-04-11,SOL,84.86637115478516,BUY / HOLD,85.2,14.8,25.0,Strong,2,15,Extreme Fear,,57.25926607054046
