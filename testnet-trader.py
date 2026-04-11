@@ -18,6 +18,7 @@ Prerequisites:
 import pandas as pd
 import json
 import os
+import sys
 import math
 import hmac
 import hashlib
@@ -869,13 +870,13 @@ def main():
         api_key, secret = load_keys()
     except RuntimeError as e:
         print(f"  ✗  {e}")
-        return
+        sys.exit(1)
 
     # Connectivity check (also syncs clock)
     print("  Checking testnet connectivity...")
     if not test_connectivity(api_key, secret):
         print("  ✗  Cannot connect to testnet — aborting")
-        return
+        sys.exit(1)   # Exit with error so GitHub Actions shows a FAILED step
 
     # Load state
     positions = load_positions()
