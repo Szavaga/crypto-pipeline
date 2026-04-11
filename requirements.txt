@@ -9,3 +9,4 @@ matplotlib
 flask
 python-dotenv
 yfinance
+psycopg2-binary

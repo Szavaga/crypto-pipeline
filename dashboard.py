@@ -257,6 +257,18 @@ def main():
         "btc_fund": btc_fund,
     }
 
+    # Write candles to DB
+    try:
+        import db
+        db.init_schema()
+        for ticker, symbol in COINS.items():
+            candles = prices.get(ticker, [])
+            if candles:
+                db.try_write(db.upsert_candles, ticker, candles)
+        print("  ✓  Candles → DB")
+    except Exception as e:
+        print(f"  ⚠  DB candles skipped: {e}")
+
     # Clean and save
     data = clean(data)
     os.makedirs(DATA_DIR, exist_ok=True)

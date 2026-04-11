@@ -918,10 +918,26 @@ def main():
             positions, signals, ledger, today, api_key, secret, lot_info_by_coin
         )
 
-    # Save state
+    # Save state (CSV/JSON)
     save_positions(positions)
     save_ledger(ledger)
     summary_path = save_summary(positions, ledger, today)
+
+    # Save state (DB)
+    try:
+        import db
+        db.init_schema()
+        for coin, pos in positions.items():
+            db.try_write(db.upsert_position, "testnet", coin, pos)
+        # Write any new ledger rows to DB
+        new_rows = ledger[ledger["date"] == today].to_dict("records")
+        for row in new_rows:
+            db.try_write(db.insert_trade, "testnet", row)
+        if new_rows:
+            print(f"  ✓  Trades → DB ({len(new_rows)} rows)")
+        print(f"  ✓  Positions → DB")
+    except Exception as e:
+        print(f"  ⚠  DB skipped: {e}")
 
     # Print summary
     print_summary(positions, today)

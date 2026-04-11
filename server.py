@@ -282,6 +282,63 @@ def api_trading():
     return jsonify(result)
 
 
+# ── API: database read endpoints ─────────────────────────────────────────────
+
+@app.route("/api/db/signals")
+def api_db_signals():
+    """Return recent signals from PostgreSQL (falls back to empty if DB unavailable)."""
+    try:
+        import db
+        coin  = __import__("flask").request.args.get("coin")
+        limit = int(__import__("flask").request.args.get("limit", 100))
+        rows  = db.get_signals(coin=coin, limit=limit)
+        return jsonify({"ok": True, "data": rows, "count": len(rows)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e), "data": []}), 200
+
+
+@app.route("/api/db/trades")
+def api_db_trades():
+    """Return recent trades from PostgreSQL."""
+    try:
+        import db
+        from flask import request
+        account = request.args.get("account_type")
+        coin    = request.args.get("coin")
+        limit   = int(request.args.get("limit", 100))
+        rows    = db.get_trades(account_type=account, coin=coin, limit=limit)
+        return jsonify({"ok": True, "data": rows, "count": len(rows)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e), "data": []}), 200
+
+
+@app.route("/api/db/positions")
+def api_db_positions():
+    """Return current positions from PostgreSQL."""
+    try:
+        import db
+        from flask import request
+        account = request.args.get("account_type")
+        rows    = db.get_positions(account_type=account)
+        return jsonify({"ok": True, "data": rows, "count": len(rows)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e), "data": []}), 200
+
+
+@app.route("/api/db/candles")
+def api_db_candles():
+    """Return recent OHLCV candles from PostgreSQL."""
+    try:
+        import db
+        from flask import request
+        coin  = request.args.get("coin", "BTC")
+        limit = int(request.args.get("limit", 120))
+        rows  = db.get_candles(coin=coin, limit=limit)
+        return jsonify({"ok": True, "data": rows, "count": len(rows)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e), "data": []}), 200
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":

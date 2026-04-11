@@ -429,13 +429,24 @@ def main():
     print(f"\n  ⚠  Model signals only — not financial advice.")
     print(f"{'='*54}\n")
 
-    # Log
+    # Log to CSV
     if signals:
         log_path = os.path.join(DATA_DIR, "signal_log.csv")
         log_df   = pd.DataFrame(signals)
         header   = not os.path.exists(log_path)
         log_df.to_csv(log_path, mode="a", header=header, index=False)
         print(f"  Logged → {log_path}\n")
+
+    # Log to DB
+    try:
+        import db
+        db.init_schema()
+        for s in signals:
+            db.try_write(db.upsert_signal, s)
+        if signals:
+            print(f"  ✓  Signals → DB ({len(signals)} rows)")
+    except Exception as e:
+        print(f"  ⚠  DB skipped: {e}")
 
     # Telegram
     try:

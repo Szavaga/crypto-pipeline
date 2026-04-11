@@ -322,9 +322,23 @@ def main():
     # Execute trades
     positions, ledger = execute_trades(positions, signals, ledger, today)
 
-    # Save state
+    # Save state (CSV/JSON)
     save_positions(positions)
     save_ledger(ledger)
+
+    # Save state (DB)
+    try:
+        import db
+        db.init_schema()
+        for coin, pos in positions.items():
+            db.try_write(db.upsert_position, "paper", coin, pos)
+        new_rows = ledger[ledger["date"].astype(str).str.startswith(today)].to_dict("records")
+        for row in new_rows:
+            db.try_write(db.insert_trade, "paper", row)
+        if new_rows:
+            print(f"  ✓  Trades → DB ({len(new_rows)} rows)")
+    except Exception as e:
+        print(f"  ⚠  DB skipped: {e}")
 
     # Portfolio summary
     summary = portfolio_summary(positions)
