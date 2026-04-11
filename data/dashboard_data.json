@@ -1,5 +1,5 @@
 {
-  "updated": "2026-04-10 17:27 UTC",
+  "updated": "2026-04-11 03:26 UTC",
   "prices": {
     "BTC": [],
     "ETH": [],
@@ -12,6 +12,21 @@
   },
   "signals": {
     "BTC": [
+      {
+        "date": "2026-04-11",
+        "coin": "BTC",
+        "price": 73072.304688,
+        "signal": "SKIP - low confidence",
+        "prob_up": 54.0,
+        "prob_down": 46.0,
+        "kelly_pct": 0.0,
+        "confidence": "Too weak to act",
+        "mtf_score": 3,
+        "fear_greed": 15,
+        "fg_label": "Extreme Fear",
+        "funding": 0.0,
+        "btc_dom": 57.266909
+      },
       {
         "date": "2026-04-10",
         "coin": "BTC",
@@ -240,6 +255,21 @@
     ],
     "ETH": [
       {
+        "date": "2026-04-11",
+        "coin": "ETH",
+        "price": 2250.257812,
+        "signal": "BUY / HOLD",
+        "prob_up": 61.1,
+        "prob_down": 38.9,
+        "kelly_pct": 14.2,
+        "confidence": "Moderate",
+        "mtf_score": 3,
+        "fear_greed": 15,
+        "fg_label": "Extreme Fear",
+        "funding": 0.0,
+        "btc_dom": 57.266909
+      },
+      {
         "date": "2026-04-10",
         "coin": "ETH",
         "price": 2187.384277,
@@ -466,6 +496,21 @@
       }
     ],
     "SOL": [
+      {
+        "date": "2026-04-11",
+        "coin": "SOL",
+        "price": 84.889145,
+        "signal": "BUY / HOLD",
+        "prob_up": 85.2,
+        "prob_down": 14.8,
+        "kelly_pct": 25.0,
+        "confidence": "Strong",
+        "mtf_score": 2,
+        "fear_greed": 15,
+        "fg_label": "Extreme Fear",
+        "funding": 0.0,
+        "btc_dom": 57.266909
+      },
       {
         "date": "2026-04-10",
         "coin": "SOL",
@@ -695,75 +740,80 @@
   },
   "latest": {
     "BTC": {
-      "date": "2026-04-10",
+      "date": "2026-04-11",
       "coin": "BTC",
-      "price": 71935.421875,
-      "signal": "STAY OUT",
-      "prob_up": 16.7,
-      "prob_down": 83.3,
+      "price": 73072.304688,
+      "signal": "SKIP - low confidence",
+      "prob_up": 54.0,
+      "prob_down": 46.0,
       "kelly_pct": 0.0,
-      "confidence": "Strong (bearish)",
+      "confidence": "Too weak to act",
       "mtf_score": 3,
-      "fear_greed": 16,
+      "fear_greed": 15,
       "fg_label": "Extreme Fear",
       "funding": 0.0,
-      "btc_dom": 57.192425
+      "btc_dom": 57.266909
     },
     "ETH": {
-      "date": "2026-04-10",
+      "date": "2026-04-11",
       "coin": "ETH",
-      "price": 2187.384277,
-      "signal": "STAY OUT",
-      "prob_up": 3.9,
-      "prob_down": 96.1,
-      "kelly_pct": 0.0,
-      "confidence": "Strong (bearish)",
-      "mtf_score": 2,
-      "fear_greed": 16,
+      "price": 2250.257812,
+      "signal": "BUY / HOLD",
+      "prob_up": 61.1,
+      "prob_down": 38.9,
+      "kelly_pct": 14.2,
+      "confidence": "Moderate",
+      "mtf_score": 3,
+      "fear_greed": 15,
       "fg_label": "Extreme Fear",
       "funding": 0.0,
-      "btc_dom": 57.192425
+      "btc_dom": 57.266909
     },
     "SOL": {
-      "date": "2026-04-10",
+      "date": "2026-04-11",
       "coin": "SOL",
-      "price": 82.998138,
-      "signal": "STAY OUT",
-      "prob_up": 35.3,
-      "prob_down": 64.7,
-      "kelly_pct": 0.0,
-      "confidence": "Moderate (bearish)",
+      "price": 84.889145,
+      "signal": "BUY / HOLD",
+      "prob_up": 85.2,
+      "prob_down": 14.8,
+      "kelly_pct": 25.0,
+      "confidence": "Strong",
       "mtf_score": 2,
-      "fear_greed": 16,
+      "fear_greed": 15,
       "fg_label": "Extreme Fear",
       "funding": 0.0,
-      "btc_dom": 57.192425
+      "btc_dom": 57.266909
     }
   },
   "stats": {
     "BTC": {
-      "total": 15,
+      "total": 16,
       "buys": 1,
       "stays": 12,
-      "skips": 2,
-      "avg_conf": 34.5
+      "skips": 3,
+      "avg_conf": 35.7
     },
     "ETH": {
-      "total": 15,
-      "buys": 2,
+      "total": 16,
+      "buys": 3,
       "stays": 11,
       "skips": 2,
-      "avg_conf": 24.4
+      "avg_conf": 26.7
     },
     "SOL": {
-      "total": 15,
-      "buys": 4,
+      "total": 16,
+      "buys": 5,
       "stays": 8,
       "skips": 3,
-      "avg_conf": 49.5
+      "avg_conf": 51.7
     }
   },
   "fg": [
+    {
+      "t": 1775865600000,
+      "v": 15,
+      "l": "Extreme Fear"
+    },
     {
       "t": 1775779200000,
       "v": 16,
@@ -1058,18 +1108,13 @@
       "t": 1770768000000,
       "v": 11,
       "l": "Extreme Fear"
-    },
-    {
-      "t": 1770681600000,
-      "v": 9,
-      "l": "Extreme Fear"
     }
   ],
   "glbl": {
     "btc_dom": 57.3,
     "eth_dom": 10.6,
-    "total_mcap": 2549145604404.143,
-    "mcap_change": 0.54
+    "total_mcap": 2553870576728.8086,
+    "mcap_change": 1.49
   },
   "eth_fund": 0.0,
   "btc_fund": 0.0
