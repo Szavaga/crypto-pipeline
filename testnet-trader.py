@@ -34,6 +34,17 @@ try:
 except ImportError:
     pass  # python-dotenv not installed; fall back to environment variables
 
+# Telegram notifications (optional — graceful degradation if module missing)
+try:
+    import telegram_notify as _tg_mod
+    _TG_OK = True
+except ImportError:
+    _TG_OK = False
+
+def _tg(msg: str):
+    if _TG_OK:
+        _tg_mod.send_message(msg)
+
 # ── Constants ──────────────────────────────────────────────────────────────────
 
 TESTNET_BASE   = "https://testnet.binance.vision"
@@ -553,6 +564,14 @@ def process_fills(positions: dict, ledger: pd.DataFrame,
         print(f"  {emoji}  {coin} {action}  exit=${exit_price:,.2f}  "
               f"P&L=${pnl:+.2f} ({pnl_pct:+.2f}%)  "
               f"balance=${pos['balance']:.2f}")
+        tg_emoji = "🎯" if reason == "TP_HIT" else "💥"
+        tg_label = "TP HIT" if reason == "TP_HIT" else "SL HIT"
+        _tg(
+            f"{tg_emoji} <b>TESTNET {tg_label} — {coin}</b>\n"
+            f"Fill: <b>${exit_price:,.2f}</b>\n"
+            f"PnL: <b>${pnl:+.2f} ({pnl_pct:+.1f}%)</b>\n"
+            f"Balance: ${pos['balance']:.2f}"
+        )
 
     if new_rows:
         ledger = pd.concat([ledger, pd.DataFrame(new_rows)], ignore_index=True)
@@ -644,6 +663,12 @@ def execute_exits_by_signal(positions: dict, signals: dict,
         print(f"  {emoji}  {coin} SIGNAL EXIT  @ ${exit_price:,.2f}  "
               f"P&L=${pnl:+.2f} ({pnl_pct:+.2f}%)  "
               f"balance=${pos['balance']:.2f}")
+        _tg(
+            f"🔴 <b>TESTNET SELL (signal exit) — {coin}</b>\n"
+            f"Exit: <b>${exit_price:,.2f}</b>  qty={exit_qty}\n"
+            f"PnL: <b>${pnl:+.2f} ({pnl_pct:+.1f}%)</b>\n"
+            f"Balance: ${pos['balance']:.2f}"
+        )
 
     if new_rows:
         ledger = pd.concat([ledger, pd.DataFrame(new_rows)], ignore_index=True)
@@ -786,6 +811,13 @@ def execute_entries(positions: dict, signals: dict, ledger: pd.DataFrame,
         print(f"  ✓  {coin} ENTERED  @ ${entry_price:,.2f}  "
               f"qty={executed_qty}  cost=${net_cost:.2f}  "
               f"balance=${pos['balance']:.2f}")
+        _tg(
+            f"🟢 <b>TESTNET BUY — {coin}</b>\n"
+            f"Entry: <b>${entry_price:,.2f}</b>  qty={executed_qty}\n"
+            f"Cost: ${net_cost:.2f}  Kelly: {use_kelly:.1f}%\n"
+            f"SL: ${sl_price:,.2f}  TP: ${tp_price:,.2f}\n"
+            f"Balance left: ${pos['balance']:.2f}"
+        )
 
     if new_rows:
         ledger = pd.concat([ledger, pd.DataFrame(new_rows)], ignore_index=True)
@@ -886,6 +918,7 @@ def main():
     signals = get_latest_signals(today)
     if not signals:
         print(f"  ⚠  No signals for {today} — run predict-today.py first")
+        _tg(f"⚠️ Testnet: no signals for {today} — entries skipped")
         # Still check fills / manage open positions
     else:
         print(f"  Signals loaded for: {list(signals.keys())}")
@@ -941,6 +974,21 @@ def main():
 
     # Print summary
     print_summary(positions, today)
+
+    # Telegram end-of-run summary
+    total_equity = sum(
+        p.get("balance", 0) + p.get("value_usdt", 0) for p in positions.values()
+    )
+    coin_lines = []
+    for coin in COINS:
+        p = positions.get(coin, {})
+        status = "IN POSITION" if p.get("in_position") else "flat"
+        coin_lines.append(f"  {coin}: {status}  bal=${p.get('balance', 0):.2f}")
+    _tg(
+        f"📊 <b>Testnet Run Complete — {today}</b>\n"
+        + "\n".join(coin_lines)
+        + f"\nTotal equity: <b>${total_equity:.2f}</b>"
+    )
 
     print(f"\n  ✓  Positions → {POSITIONS_PATH}")
     print(f"  ✓  Ledger    → {LEDGER_PATH}")
