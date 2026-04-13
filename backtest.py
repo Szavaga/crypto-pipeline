@@ -11,6 +11,16 @@ import pandas as pd
 import numpy as np
 import pickle
 import os
+
+# Required for unpickling calibrated models from train-model.py
+class _CalibratedModel:
+    def __init__(self, model, calibrator):
+        self.model      = model
+        self.calibrator = calibrator
+    def predict_proba(self, X):
+        raw = self.model.predict_proba(X)[:, 1]
+        cal = self.calibrator.predict(raw)
+        return np.column_stack([1 - cal, cal])
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt

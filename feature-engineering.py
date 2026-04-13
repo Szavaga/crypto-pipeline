@@ -272,6 +272,26 @@ def fetch_btc_dominance() -> pd.DataFrame:
         return pd.DataFrame()
 
 
+def fetch_dxy() -> pd.DataFrame:
+    """Fetch US Dollar Index (DXY) via yfinance — strong dollar = bearish crypto."""
+    print("  Fetching DXY (US Dollar Index)...")
+    try:
+        import yfinance as yf
+        df = yf.Ticker("DX-Y.NYB").history(period="3y", interval="1d", auto_adjust=True)
+        if df.empty:
+            raise RuntimeError("yfinance returned no DXY data")
+        df = df.rename(columns={"Close": "dxy_close"})
+        df.index = pd.to_datetime(df.index, utc=True).tz_localize(None)
+        df["date"]          = df.index.date
+        df["dxy_ret5"]      = df["dxy_close"].pct_change(5).round(6)
+        df["dxy_above_ma20"] = (df["dxy_close"] > df["dxy_close"].rolling(20).mean()).astype(int)
+        print(f"  ✓  DXY: {len(df)} days")
+        return df[["date", "dxy_close", "dxy_ret5", "dxy_above_ma20"]].reset_index(drop=True)
+    except Exception as e:
+        print(f"  ⚠  DXY failed: {e}")
+        return pd.DataFrame()
+
+
 # ── Timeframe alignment ───────────────────────────────────────────────────────
 
 def build_mtf_features(symbol: str, ticker: str) -> pd.DataFrame:
@@ -394,6 +414,7 @@ def main():
     fear_greed = fetch_fear_greed()
     funding    = fetch_funding("BTCUSDT")
     btc_dom    = fetch_btc_dominance()
+    dxy        = fetch_dxy()
     print()
 
     all_featured = []
@@ -422,9 +443,14 @@ def main():
                 bd["date"] = pd.to_datetime(bd["date"])
                 df = df.merge(bd, on="date", how="left")
 
+            if not dxy.empty:
+                dx = dxy.copy()
+                dx["date"] = pd.to_datetime(dx["date"])
+                df = df.merge(dx, on="date", how="left")
+
             # Forward-fill external data gaps
             ext_cols = [c for c in df.columns if any(
-                c.startswith(p) for p in ["fear_","fg_","funding_","btc_dom"]
+                c.startswith(p) for p in ["fear_","fg_","funding_","btc_dom","dxy_"]
             )]
             df[ext_cols] = df[ext_cols].ffill()
 
@@ -433,6 +459,16 @@ def main():
             ema200 = df["close"].ewm(span=200, adjust=False).mean()
             df["regime_bull"]     = (ema50 > ema200).astype(int)
             df["regime_strength"] = ((ema50 - ema200) / ema200).round(6)
+
+            # Feature interactions — capture combined signals the model can't see alone
+            if "d_rsi14" in df.columns and "d_vol_ratio" in df.columns:
+                df["rsi_vol_bull"]  = df["d_rsi14"] * df["d_vol_ratio"]
+            if "d_macd_hist" in df.columns and "d_bb_position" in df.columns:
+                df["macd_bb_pos"]   = df["d_macd_hist"] * df["d_bb_position"]
+            if "d_ema_cross" in df.columns and "d_rsi14" in df.columns:
+                df["ema_rsi_align"] = df["d_ema_cross"] * (df["d_rsi14"] - 50)
+            if "funding_rate" in df.columns and "d_rsi14" in df.columns:
+                df["funding_rsi"]   = df["funding_rate"] * df["d_rsi14"]
 
             # Drop rows where core daily features are missing
             core_cols = ["d_rsi14", "d_ema50", "d_macd_line"]

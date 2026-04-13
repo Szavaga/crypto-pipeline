@@ -31,7 +31,8 @@ from datetime import datetime, timezone
 
 DATA_DIR    = "data"
 MODEL_DIR   = "models"
-CONF_THRESH = 0.55
+CONF_THRESH = 0.55  # default fallback
+CONF_THRESHOLD = {"BTC": 0.55, "ETH": 0.57, "SOL": 0.65}  # per-coin thresholds
 
 COINS = {"BTC": "BTCUSDT", "ETH": "ETHUSDT", "SOL": "SOLUSDT"}
 # yfinance ticker map (used as fallback when Binance returns 451/geo-block)
@@ -141,6 +142,25 @@ def get_funding(symbol="BTCUSDT"):
             "funding_extreme_neg": int(fr<-0.01),
             "funding_7d_avg": sum(rates)/len(rates),
             "funding_momentum": fr - rates[0] if rates else 0,
+        }
+    except: return {}
+
+
+def get_dxy():
+    """Fetch latest DXY (US Dollar Index) value via yfinance."""
+    try:
+        import yfinance as yf
+        df = yf.Ticker("DX-Y.NYB").history(period="30d", interval="1d", auto_adjust=True)
+        if df.empty:
+            return {}
+        closes = df["Close"].dropna()
+        dxy    = float(closes.iloc[-1])
+        ma20   = float(closes.rolling(20).mean().iloc[-1]) if len(closes) >= 20 else dxy
+        ret5   = float((closes.iloc[-1] / closes.iloc[-6] - 1)) if len(closes) >= 6 else 0.0
+        return {
+            "dxy_close":       round(dxy, 4),
+            "dxy_ret5":        round(ret5, 6),
+            "dxy_above_ma20":  int(dxy > ma20),
         }
     except: return {}
 
@@ -264,6 +284,15 @@ def build_live_features(symbol):
     except:
         pass
 
+    # Feature interactions (must match feature-engineering.py)
+    try:
+        combined["rsi_vol_bull"]  = combined.get("d_rsi14", 50) * combined.get("d_vol_ratio", 1)
+        combined["macd_bb_pos"]   = combined.get("d_macd_hist", 0) * combined.get("d_bb_position", 0.5)
+        combined["ema_rsi_align"] = combined.get("d_ema_cross", 0) * (combined.get("d_rsi14", 50) - 50)
+        combined["funding_rsi"]   = combined.get("funding_rate", 0) * combined.get("d_rsi14", 50)
+    except:
+        pass
+
     # Current price and date from daily
     combined["close"] = df_1d["close"].iloc[-1]
     combined["date"]  = df_1d["date"].iloc[-1]
@@ -299,6 +328,7 @@ def main():
     fg      = get_fear_greed()
     btc_dom = get_btc_dominance()
     funding = get_funding("BTCUSDT")
+    dxy     = get_dxy()
 
     if fg:
         print(f"  Fear & Greed:  {fg['fear_greed']} — {fg.get('fg_label','')}")
@@ -306,8 +336,10 @@ def main():
         print(f"  BTC Dominance: {btc_dom['btc_dominance']:.1f}%")
     if funding:
         print(f"  Funding Rate:  {funding['funding_rate']:.4f}%")
+    if dxy:
+        print(f"  DXY:           {dxy['dxy_close']:.2f}  ({'above' if dxy['dxy_above_ma20'] else 'below'} MA20)")
 
-    external = {**fg, **btc_dom, **funding}
+    external = {**fg, **btc_dom, **funding, **dxy}
     external.pop("fg_label", None)
 
     print()
@@ -346,11 +378,12 @@ def main():
             prob_up   = ensemble_proba(artifacts, row)
             prob_down = 1 - prob_up
 
-            if prob_up >= CONF_THRESH:
+            coin_thresh = CONF_THRESHOLD.get(ticker, CONF_THRESH)
+            if prob_up >= coin_thresh:
                 signal    = "BUY / HOLD"
                 arrow     = "▲"
                 kelly_pct = kelly_fraction(prob_up, artifacts["avg_win"], artifacts["avg_loss"])
-            elif prob_down >= CONF_THRESH:
+            elif prob_down >= coin_thresh:
                 signal    = "STAY OUT"
                 arrow     = "▼"
                 kelly_pct = 0.0

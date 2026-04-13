@@ -48,7 +48,7 @@ EXCLUDE_COLS = [
     "close_ma7", "close_ma30", "daily_return", "price_range",
 ]
 
-N_FEATURES    = 20
+N_FEATURES    = 25
 N_FOLDS       = 5
 MIN_TRAIN     = 200
 CONF_THRESH   = 0.55

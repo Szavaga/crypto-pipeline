@@ -63,7 +63,7 @@ SLIPPAGE_PCT    = 0.0005  # 0.05% market-order slippage (testnet book is thin vs
 SL_PCT         = 0.04     # 4% stop-loss
 TP_PCT         = 0.08     # 8% take-profit (2:1 R/R)
 SL_LIMIT_OFFSET = 0.002   # 0.2% below stop trigger to ensure fill
-CONF_THRESHOLD = 55.0     # minimum prob_up % to enter
+CONF_THRESHOLD = {"BTC": 55.0, "ETH": 57.0, "SOL": 65.0}  # per-coin minimum prob_up % to enter
 MAX_KELLY_PCT  = 25.0     # cap Kelly position size at 25% of balance
 
 # Cache for exchange info (avoid repeated API calls)
@@ -707,7 +707,7 @@ def execute_entries(positions: dict, signals: dict, ledger: pd.DataFrame,
         prob_up   = float(signal.get("prob_up", 50))
         kelly_pct = float(signal.get("kelly_pct", 0))
 
-        if "BUY" not in sig_text or prob_up < CONF_THRESHOLD:
+        if "BUY" not in sig_text or prob_up < CONF_THRESHOLD.get(coin, 55.0):
             status = "STAY OUT" if "OUT" in sig_text else "SKIP"
             print(f"  —  {coin} {status} (prob_up={prob_up:.1f}%)  balance=${pos['balance']:.2f}")
             continue
