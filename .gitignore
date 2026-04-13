@@ -15,6 +15,8 @@ data/*
 # ── Models — track pkl and charts, exclude old single-model files ──────────────
 models/*
 !models/*_ensemble.pkl
+!models/*_simple3.pkl
+!models/*_simple5.pkl
 !models/*_results.png
 
 # ── Backtest output ───────────────────────────────────────────────────────────
