@@ -80,20 +80,12 @@ def run_backtest(ticker: str) -> dict:
     df = df.dropna(subset=feature_cols + ["target"]).reset_index(drop=True)
 
     # ── Walk-forward backtest ──────────────────────────────────────────────
-    # Train on first 60%, simulate trading on remaining 40%
-    # This avoids data snooping completely
+    # Test on last 40% of data — same split used by train-model.py
+    # Use the scalers saved during training (not new ones) so predictions
+    # are computed exactly as the live model would compute them.
     split = int(len(df) * 0.60)
-    X_train = df[feature_cols].iloc[:split].values
-    y_train = df["target"].iloc[:split].values
 
-    from sklearn.preprocessing import StandardScaler
-    scalers = {}
-    models  = {}
-
-    for name, model in artifacts["models"].items():
-        sc = StandardScaler()
-        sc.fit(X_train)
-        scalers[name] = sc
+    scalers = artifacts["scalers"]   # fitted by train-model.py on its train split
 
     # Generate predictions for test period only
     test_df = df.iloc[split:].copy().reset_index(drop=True)
