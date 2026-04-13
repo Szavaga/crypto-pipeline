@@ -32,11 +32,11 @@ from datetime import datetime, timezone
 DATA_DIR    = "data"
 MODEL_DIR   = "models"
 CONF_THRESH = 0.55  # default fallback
-CONF_THRESHOLD = {"BTC": 0.55, "ETH": 0.57, "SOL": 0.65}  # per-coin thresholds
+CONF_THRESHOLD = {"BTC": 0.55, "ETH": 0.57, "SOL": 0.65, "AVAX": 0.60, "LINK": 0.58}  # per-coin thresholds
 
-COINS = {"BTC": "BTCUSDT", "ETH": "ETHUSDT", "SOL": "SOLUSDT"}
+COINS = {"BTC": "BTCUSDT", "ETH": "ETHUSDT", "SOL": "SOLUSDT", "AVAX": "AVAXUSDT", "LINK": "LINKUSDT"}
 # yfinance ticker map (used as fallback when Binance returns 451/geo-block)
-YFINANCE_MAP = {"BTCUSDT": "BTC-USD", "ETHUSDT": "ETH-USD", "SOLUSDT": "SOL-USD"}
+YFINANCE_MAP = {"BTCUSDT": "BTC-USD", "ETHUSDT": "ETH-USD", "SOLUSDT": "SOL-USD", "AVAXUSDT": "AVAX-USD", "LINKUSDT": "LINK-USD"}
 BINANCE_URL = "https://api.binance.com/api/v3/klines"
 FAPI_URL    = "https://fapi.binance.com/fapi/v1/fundingRate"
 
@@ -144,6 +144,87 @@ def get_funding(symbol="BTCUSDT"):
             "funding_momentum": fr - rates[0] if rates else 0,
         }
     except: return {}
+
+
+def get_reddit_sentiment(coin: str) -> float:
+    """
+    Scrape hot posts from r/CryptoCurrency and coin-specific subreddit.
+    Returns score from -1.0 (very bearish) to +1.0 (very bullish).
+    No API key required.
+    """
+    BULLISH = ["bullish", "moon", "pump", "buy", "long", "breakout", "rally",
+               "support", "accumulate", "undervalued", "bounce", "uptrend"]
+    BEARISH = ["bearish", "dump", "sell", "short", "crash", "panic", "fear",
+               "warning", "rug", "scam", "overvalued", "downtrend", "collapse"]
+    SUBREDDITS = {
+        "BTC": "bitcoin", "ETH": "ethereum", "SOL": "solana",
+        "AVAX": "avax", "LINK": "Chainlink",
+    }
+    headers = {"User-Agent": "crypto-pipeline-sentiment/1.0"}
+    bull, bear = 0, 0
+    try:
+        subs = ["CryptoCurrency"]
+        if coin in SUBREDDITS:
+            subs.append(SUBREDDITS[coin])
+        for sub in subs:
+            r = requests.get(
+                f"https://www.reddit.com/r/{sub}/hot.json",
+                params={"limit": 30}, headers=headers, timeout=8
+            )
+            for post in r.json()["data"]["children"]:
+                title = post["data"]["title"].lower()
+                bull += sum(1 for w in BULLISH if w in title)
+                bear += sum(1 for w in BEARISH if w in title)
+    except Exception:
+        return 0.0
+    total = bull + bear
+    return round((bull - bear) / total, 3) if total > 0 else 0.0
+
+
+def get_cryptopanic_sentiment(coin: str) -> float:
+    """
+    Fetch news sentiment from CryptoPanic API.
+    Requires CRYPTOPANIC_TOKEN in .env — returns 0.0 if not configured.
+    Get a free token at: https://cryptopanic.com/developers/api/
+    """
+    token = os.environ.get("CRYPTOPANIC_TOKEN", "")
+    if not token:
+        return 0.0
+    try:
+        r = requests.get(
+            "https://cryptopanic.com/api/v1/posts/",
+            params={"auth_token": token, "currencies": coin,
+                    "filter": "important", "kind": "news"},
+            timeout=10
+        )
+        results = r.json().get("results", [])
+        bull = sum(1 for p in results
+                   if (p.get("votes") or {}).get("positive", 0) >
+                      (p.get("votes") or {}).get("negative", 0))
+        bear = sum(1 for p in results
+                   if (p.get("votes") or {}).get("negative", 0) >
+                      (p.get("votes") or {}).get("positive", 0))
+        total = bull + bear
+        return round((bull - bear) / total, 3) if total > 0 else 0.0
+    except Exception:
+        return 0.0
+
+
+def get_sentiment(coin: str) -> dict:
+    """
+    Combine Reddit + CryptoPanic into a single sentiment dict.
+    override=True means the BUY signal should be blocked.
+    """
+    reddit      = get_reddit_sentiment(coin)
+    cryptopanic = get_cryptopanic_sentiment(coin)
+    has_cp      = bool(os.environ.get("CRYPTOPANIC_TOKEN", ""))
+    combined    = (0.6 * cryptopanic + 0.4 * reddit) if has_cp else reddit
+    return {
+        "reddit":      reddit,
+        "cryptopanic": cryptopanic,
+        "combined":    round(combined, 3),
+        "override":    combined < -0.4,   # block BUY if strongly negative
+    }
 
 
 def get_dxy():
@@ -392,6 +473,15 @@ def main():
                 arrow     = "—"
                 kelly_pct = 0.0
 
+            # Sentiment filter — veto BUY if news/social sentiment is strongly negative
+            sentiment = get_sentiment(ticker)
+            if signal == "BUY / HOLD" and sentiment["override"]:
+                signal    = "SKIP — negative sentiment"
+                arrow     = "—"
+                kelly_pct = 0.0
+                print(f"  ⚠  Sentiment override: reddit={sentiment['reddit']:+.2f}  "
+                      f"cp={sentiment['cryptopanic']:+.2f}  combined={sentiment['combined']:+.2f}")
+
             if prob_up >= 0.65:     conf_label = "Strong"
             elif prob_up >= 0.55:   conf_label = "Moderate"
             elif prob_down >= 0.65: conf_label = "Strong (bearish)"
@@ -428,6 +518,7 @@ def main():
                 "fg_label":   fg.get("fg_label",""),
                 "funding":    funding.get("funding_rate",""),
                 "btc_dom":    btc_dom.get("btc_dominance",""),
+                "sentiment":  sentiment["combined"],
             })
 
         except Exception as e:

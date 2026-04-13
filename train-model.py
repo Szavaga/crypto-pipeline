@@ -40,7 +40,7 @@ INPUT_DIR  = "data"
 OUTPUT_DIR = "models"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-COINS = ["BTC", "ETH", "SOL"]
+COINS = ["BTC", "ETH", "SOL", "AVAX", "LINK"]
 
 EXCLUDE_COLS = [
     "date", "open", "high", "low", "close", "volume",

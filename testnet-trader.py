@@ -54,8 +54,8 @@ POSITIONS_PATH = os.path.join(DATA_DIR, "testnet_positions.json")
 LEDGER_PATH    = os.path.join(DATA_DIR, "testnet_ledger.csv")
 SIGNAL_LOG     = os.path.join(DATA_DIR, "signal_log.csv")
 
-COINS        = ["ETH", "BTC", "SOL"]
-COIN_SYMBOLS = {"ETH": "ETHUSDT", "BTC": "BTCUSDT", "SOL": "SOLUSDT"}
+COINS        = ["BTC", "ETH", "SOL", "AVAX", "LINK"]
+COIN_SYMBOLS = {"BTC": "BTCUSDT", "ETH": "ETHUSDT", "SOL": "SOLUSDT", "AVAX": "AVAXUSDT", "LINK": "LINKUSDT"}
 
 INITIAL_CAPITAL = 200.0   # USDT allocated per coin on testnet
 COMMISSION      = 0.001   # 0.1% Binance fee (per side)
@@ -64,7 +64,7 @@ SLIPPAGE_PCT    = 0.0005  # 0.05% market-order slippage (testnet book is thin vs
 SL_PCT         = 0.04     # 4% stop-loss
 TP_PCT         = 0.08     # 8% take-profit (2:1 R/R)
 SL_LIMIT_OFFSET = 0.002   # 0.2% below stop trigger to ensure fill
-CONF_THRESHOLD = {"BTC": 55.0, "ETH": 57.0, "SOL": 65.0}  # per-coin minimum prob_up % to enter
+CONF_THRESHOLD = {"BTC": 55.0, "ETH": 57.0, "SOL": 65.0, "AVAX": 60.0, "LINK": 58.0}  # per-coin minimum prob_up % to enter
 MAX_KELLY_PCT  = 25.0     # cap Kelly position size at 25% of balance
 
 # Cache for exchange info (avoid repeated API calls)

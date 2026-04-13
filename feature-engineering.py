@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 
 INPUT_DIR  = "data"
 OUTPUT_DIR = "data"
-COINS      = ["BTC", "ETH", "SOL"]
+COINS      = ["BTC", "ETH", "SOL", "AVAX", "LINK"]
 
 BINANCE_URL = "https://api.binance.com/api/v3/klines"
 FAPI_URL    = "https://fapi.binance.com/fapi/v1/fundingRate"
@@ -418,7 +418,7 @@ def main():
     print()
 
     all_featured = []
-    COIN_SYMBOLS = {"BTC": "BTCUSDT", "ETH": "ETHUSDT", "SOL": "SOLUSDT"}
+    COIN_SYMBOLS = {"BTC": "BTCUSDT", "ETH": "ETHUSDT", "SOL": "SOLUSDT", "AVAX": "AVAXUSDT", "LINK": "LINKUSDT"}
 
     for ticker in COINS:
         symbol = COIN_SYMBOLS[ticker]

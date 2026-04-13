@@ -32,7 +32,7 @@ MODEL_DIR  = "models"
 OUTPUT_DIR = "backtest"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-COINS         = ["BTC", "ETH", "SOL"]
+COINS         = ["BTC", "ETH", "SOL", "AVAX", "LINK"]
 CONF_THRESH   = 0.55
 INITIAL_CAP   = 1000.0    # kezdő tőke USD-ben
 MAX_KELLY     = 0.25      # max 25% per trade
