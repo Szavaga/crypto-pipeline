@@ -1,25 +1,24 @@
 """
-Strategy Comparison + Paper Trading — runs 4 simple strategies alongside the ensemble.
-Each strategy starts with $200 and opens/closes positions every 8-hour cycle.
+Strategy Comparison + Paper Trading
+Runs 4 simple strategies alongside the ensemble. Each starts with $200.
+
+Position logic:
+  OPEN  — signal = BUY and no position currently open
+  HOLD  — signal = BUY and position already open (nothing changes)
+  CLOSE — signal flips to SKIP or STAY OUT and position is open
+
+So a position can stay open across many 8-hour cycles.
+Use paper-status.py to check live values between cron runs.
 
 Strategies:
-  ensemble  — the full XGBoost ensemble from predict-today.py
-  fund      — Funding Rate Contrarian (rule-based)
-  rsi       — RSI Mean Reversion (rule-based)
-  ml3       — Simple3 XGBoost (d_rsi14 + funding_rate + d_vol_ratio)
-  ml5       — Simple5 XGBoost (above + fear_greed + d_macd_hist)
+  ensemble — full XGBoost ensemble from predict-today.py
+  fund     — Funding Rate Contrarian (rule-based)
+  rsi      — RSI Mean Reversion (rule-based)
+  ml3      — Simple3 XGBoost (d_rsi14, funding_rate, d_vol_ratio)
+  ml5      — Simple5 XGBoost (above + fear_greed, d_macd_hist)
 
-Position sizing: 20% of available capital per BUY signal.
-Positions are held for one cycle (open now, close next run).
-Commission: 0.1% entry + 0.1% exit = 0.2% round-trip.
-
-Files written:
-  data/simple_paper_state.json  — current capital + open positions per strategy
-  data/simple_paper_ledger.csv  — full trade log
-  data/strategy_comparison.json — signal comparison snapshot
-
-Usage: python compare-strategies.py
-Run after: predict-today.py && testnet-trader.py
+State:  data/simple_paper_state.json
+Ledger: data/simple_paper_ledger.csv
 """
 
 import csv
@@ -47,10 +46,10 @@ YFINANCE_MAP = {"BTCUSDT": "BTC-USD", "ETHUSDT": "ETH-USD", "SOLUSDT": "SOL-USD"
 
 CONF_THRESH     = 0.55
 INITIAL_CAPITAL = 200.0
-POSITION_SIZE   = 0.20    # 20% of cash per BUY signal
-COMMISSION      = 0.001   # 0.1% per leg (0.2% round-trip)
+POSITION_SIZE   = 0.20   # 20% of available cash per BUY signal
+COMMISSION      = 0.001  # 0.1% per leg
 
-STRATEGIES  = ["ensemble", "fund", "rsi", "ml3", "ml5"]
+STRATEGIES = ["ensemble", "fund", "rsi", "ml3", "ml5"]
 STATE_FILE  = os.path.join(DATA_DIR, "simple_paper_state.json")
 LEDGER_FILE = os.path.join(DATA_DIR, "simple_paper_ledger.csv")
 
@@ -72,7 +71,7 @@ def fetch_daily(symbol: str, limit: int = 50) -> pd.DataFrame:
             params={"symbol": symbol, "interval": "1d", "limit": limit},
             timeout=15)
         if resp.status_code == 451 or resp.status_code != 200:
-            raise RuntimeError("geo-blocked or error")
+            raise RuntimeError("geo-blocked")
         raw = resp.json()
         df  = pd.DataFrame(raw, columns=[
             "ts", "open", "high", "low", "close", "volume",
@@ -88,7 +87,7 @@ def fetch_daily(symbol: str, limit: int = 50) -> pd.DataFrame:
 
 
 def get_live_features(symbol: str) -> tuple:
-    """Compute d_rsi14, d_macd_hist, d_vol_ratio. Returns (features_dict, current_price)."""
+    """Returns (features_dict, current_price). Price = last daily close."""
     df = fetch_daily(symbol, 50)
     if df.empty or len(df) < 20:
         return {}, 0.0
@@ -111,8 +110,7 @@ def get_live_features(symbol: str) -> tuple:
         ema12       = df["close"].ewm(span=12, adjust=False).mean()
         ema26       = df["close"].ewm(span=26, adjust=False).mean()
         macd_line   = ema12 - ema26
-        sig_line    = macd_line.ewm(span=9, adjust=False).mean()
-        d_macd_hist = float((macd_line - sig_line).iloc[-1])
+        d_macd_hist = float((macd_line - macd_line.ewm(span=9, adjust=False).mean()).iloc[-1])
 
     vol_ma20    = df["volume"].rolling(20).mean()
     d_vol_ratio = float(df["volume"].iloc[-1] / vol_ma20.iloc[-1]) \
@@ -131,9 +129,8 @@ def get_live_features(symbol: str) -> tuple:
 
 def get_funding_rate(symbol: str) -> float:
     try:
-        r    = requests.get(FAPI_URL, params={"symbol": symbol, "limit": 1}, timeout=10)
-        data = r.json()
-        return float(data[-1]["fundingRate"]) * 100
+        r = requests.get(FAPI_URL, params={"symbol": symbol, "limit": 1}, timeout=10)
+        return float(r.json()[-1]["fundingRate"]) * 100
     except Exception:
         return 0.0
 
@@ -173,8 +170,7 @@ def strategy_simple_ml(coin: str, suffix: str, features: dict) -> str:
             art = pickle.load(fh)
         vals = np.array([features.get(f, 0.0) for f in art["features"]], dtype=float)
         vals = np.nan_to_num(vals, nan=0.0).reshape(1, -1)
-        Xs   = art["scaler"].transform(vals)
-        p    = float(art["model"].predict_proba(Xs)[0][1])
+        p    = float(art["model"].predict_proba(art["scaler"].transform(vals))[0][1])
         if p >= CONF_THRESH:
             return "BUY"
         elif (1 - p) >= CONF_THRESH:
@@ -201,7 +197,7 @@ def load_ensemble_signals() -> dict:
     return result
 
 
-# ── Paper trading ─────────────────────────────────────────────────────────────
+# ── Paper trading — signal-driven open/hold/close ────────────────────────────
 
 def load_state() -> dict:
     if os.path.exists(STATE_FILE):
@@ -216,71 +212,91 @@ def save_state(state: dict):
         json.dump(state, fh, indent=2)
 
 
-def close_all_positions(state: dict, prices: dict, ts: str) -> list:
-    """Close every open position at current prices. Returns closed trade records."""
+def update_positions(state: dict, signals_by_coin: dict, prices: dict, ts: str) -> list:
+    """
+    For each strategy + coin:
+      OPEN  if signal = BUY and not in position
+      HOLD  if signal = BUY and already in position (log unrealized, no trade)
+      CLOSE if signal != BUY and in position
+    Returns list of ledger records (OPEN and CLOSE events only).
+    """
     records = []
+
     for strat in STRATEGIES:
-        for coin, pos in list(state[strat]["positions"].items()):
-            price_now   = prices.get(coin, 0.0)
-            if price_now <= 0:
-                continue
-            entry_price = pos["entry_price"]
-            size_usd    = pos["size_usd"]
-            proceeds    = size_usd * (price_now / entry_price)
-            exit_fee    = proceeds * COMMISSION
-            net_return  = proceeds - exit_fee
-            pnl         = net_return - size_usd           # net P&L vs original stake
-
-            state[strat]["capital"] += net_return
-            records.append({
-                "ts":           ts,
-                "strategy":     strat,
-                "coin":         coin,
-                "action":       "CLOSE",
-                "entry_price":  round(entry_price, 4),
-                "exit_price":   round(price_now, 4),
-                "size_usd":     round(size_usd, 4),
-                "ret_pct":      round((price_now / entry_price - 1) * 100, 3),
-                "pnl_usd":      round(pnl, 4),
-                "capital":      round(state[strat]["capital"], 4),
-                "win":          pnl > 0,
-            })
-        state[strat]["positions"] = {}
-    return records
-
-
-def open_new_positions(state: dict, signals_by_coin: dict, prices: dict, ts: str) -> list:
-    """Open positions for every BUY signal. signals_by_coin: {coin: {strat: signal}}."""
-    records = []
-    for strat in STRATEGIES:
-        for coin, sig_map in signals_by_coin.items():
-            if sig_map.get(strat) != "BUY":
-                continue
+        for coin in COINS:
+            signal    = signals_by_coin.get(coin, {}).get(strat, "SKIP")
             price_now = prices.get(coin, 0.0)
-            if price_now <= 0:
-                continue
-            cash     = state[strat]["capital"]
-            size_usd = cash * POSITION_SIZE
-            entry_fee = size_usd * COMMISSION
-            state[strat]["capital"] -= (size_usd + entry_fee)
-            state[strat]["positions"][coin] = {
-                "entry_price": round(price_now, 4),
-                "size_usd":    round(size_usd, 4),
-                "entry_ts":    ts,
-            }
-            records.append({
-                "ts":          ts,
-                "strategy":    strat,
-                "coin":        coin,
-                "action":      "OPEN",
-                "entry_price": round(price_now, 4),
-                "exit_price":  None,
-                "size_usd":    round(size_usd, 4),
-                "ret_pct":     None,
-                "pnl_usd":     round(-entry_fee, 4),
-                "capital":     round(state[strat]["capital"], 4),
-                "win":         None,
-            })
+            in_pos    = coin in state[strat]["positions"]
+
+            if signal == "BUY" and not in_pos:
+                # ── OPEN ──────────────────────────────────────────────────────
+                if price_now <= 0:
+                    continue
+                cash     = state[strat]["capital"]
+                size_usd = cash * POSITION_SIZE
+                fee      = size_usd * COMMISSION
+                state[strat]["capital"] -= (size_usd + fee)
+                state[strat]["positions"][coin] = {
+                    "entry_price": round(price_now, 6),
+                    "size_usd":    round(size_usd, 4),
+                    "entry_ts":    ts,
+                }
+                records.append({
+                    "ts":          ts,
+                    "strategy":    strat,
+                    "coin":        coin,
+                    "action":      "OPEN",
+                    "entry_price": round(price_now, 6),
+                    "exit_price":  "",
+                    "size_usd":    round(size_usd, 4),
+                    "hold_cycles": 0,
+                    "ret_pct":     "",
+                    "pnl_usd":     round(-fee, 4),
+                    "capital":     round(state[strat]["capital"], 4),
+                    "win":         "",
+                })
+
+            elif signal != "BUY" and in_pos:
+                # ── CLOSE ─────────────────────────────────────────────────────
+                if price_now <= 0:
+                    continue
+                pos         = state[strat]["positions"][coin]
+                entry_price = pos["entry_price"]
+                size_usd    = pos["size_usd"]
+                entry_ts    = pos.get("entry_ts", ts)
+                proceeds    = size_usd * (price_now / entry_price)
+                exit_fee    = proceeds * COMMISSION
+                net         = proceeds - exit_fee
+                pnl         = net - size_usd
+
+                # Approximate hold cycles (8h each)
+                try:
+                    fmt = "%Y-%m-%d %H:%M"
+                    held_h = (datetime.strptime(ts, fmt) -
+                              datetime.strptime(entry_ts, fmt)).total_seconds() / 3600
+                    cycles = max(1, round(held_h / 8))
+                except Exception:
+                    cycles = 1
+
+                state[strat]["capital"] += net
+                del state[strat]["positions"][coin]
+                records.append({
+                    "ts":          ts,
+                    "strategy":    strat,
+                    "coin":        coin,
+                    "action":      "CLOSE",
+                    "entry_price": round(entry_price, 6),
+                    "exit_price":  round(price_now, 6),
+                    "size_usd":    round(size_usd, 4),
+                    "hold_cycles": cycles,
+                    "ret_pct":     round((price_now / entry_price - 1) * 100, 3),
+                    "pnl_usd":     round(pnl, 4),
+                    "capital":     round(state[strat]["capital"], 4),
+                    "win":         pnl > 0,
+                })
+            # HOLD — position stays open, nothing logged here
+
+
     return records
 
 
@@ -289,7 +305,7 @@ def append_ledger(records: list):
         return
     os.makedirs(DATA_DIR, exist_ok=True)
     fieldnames = ["ts", "strategy", "coin", "action", "entry_price", "exit_price",
-                  "size_usd", "ret_pct", "pnl_usd", "capital", "win"]
+                  "size_usd", "hold_cycles", "ret_pct", "pnl_usd", "capital", "win"]
     write_header = not os.path.exists(LEDGER_FILE)
     with open(LEDGER_FILE, "a", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=fieldnames)
@@ -298,14 +314,14 @@ def append_ledger(records: list):
         w.writerows(records)
 
 
-def total_portfolio_value(state: dict, prices: dict) -> dict:
-    """Capital + mark-to-market value of open positions."""
+def portfolio_value(state: dict, prices: dict) -> dict:
+    """Cash + mark-to-market open positions."""
     totals = {}
     for strat in STRATEGIES:
         val = state[strat]["capital"]
         for coin, pos in state[strat]["positions"].items():
-            price_now = prices.get(coin, pos["entry_price"])
-            val += pos["size_usd"] * (price_now / pos["entry_price"])
+            p_now = prices.get(coin, pos["entry_price"])
+            val  += pos["size_usd"] * (p_now / pos["entry_price"])
         totals[strat] = round(val, 2)
     return totals
 
@@ -327,6 +343,15 @@ def send_telegram(text: str):
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
+STRAT_LABELS = {
+    "ensemble": "Ensemble",
+    "fund":     "FundRate",
+    "rsi":      "RSI-MR",
+    "ml3":      "Simple3",
+    "ml5":      "Simple5",
+}
+
+
 def main():
     now      = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -341,10 +366,9 @@ def main():
     fear_greed       = get_fear_greed()
     print(f"  Fear & Greed: {fear_greed}\n")
 
-    # ── Fetch features + prices for all coins ─────────────────────────────────
-    rows             = []     # signal comparison rows
-    prices           = {}     # {coin: current_price}
-    signals_by_coin  = {}     # {coin: {strat: signal}}
+    rows            = []
+    prices          = {}
+    signals_by_coin = {}
 
     for ticker, symbol in COINS.items():
         print(f"  ── {ticker}", end=" ", flush=True)
@@ -386,16 +410,18 @@ def main():
         })
 
         n_buy = sum(1 for s in signals_by_coin[ticker].values() if s == "BUY")
-        print(f"  ${price:>10,.2f}  RSI={d_rsi14:.1f}  fund={funding_rate:+.5f}%  → {n_buy}/5 BUY")
+        print(f"  ${price:>10,.2f}  RSI={d_rsi14:.1f}  fund={funding_rate:+.5f}%  "
+              f"→ {n_buy}/5 BUY")
         time.sleep(0.3)
 
-    # ── Paper trading: close then open ────────────────────────────────────────
-    closed = close_all_positions(state, prices, ts)
-    opened = open_new_positions(state, signals_by_coin, prices, ts)
-    append_ledger(closed + opened)
+    # ── Update paper positions ────────────────────────────────────────────────
+    records = update_positions(state, signals_by_coin, prices, ts)
+    append_ledger(records)
 
-    # Portfolio value = cash + open positions MTM
-    portfolio = total_portfolio_value(state, prices)
+    opened = [r for r in records if r["action"] == "OPEN"]
+    closed = [r for r in records if r["action"] == "CLOSE"]
+
+    portfolio = portfolio_value(state, prices)
     save_state(state)
 
     # ── Signal comparison table ───────────────────────────────────────────────
@@ -414,25 +440,32 @@ def main():
               f"{agree(r['rsi'],ens):>10}  {agree(r['ml3'],ens):>9}  {agree(r['ml5'],ens):>9}")
     print(f"  {'─'*68}")
 
-    # ── Paper portfolio summary ───────────────────────────────────────────────
-    strat_labels = {
-        "ensemble": "Ensemble",
-        "fund":     "FundRate",
-        "rsi":      "RSI-MR",
-        "ml3":      "Simple3",
-        "ml5":      "Simple5",
-    }
-    print(f"\n  Paper Portfolio (started ${INITIAL_CAPITAL:.0f} each):")
-    print(f"  {'─'*44}")
-    print(f"  {'Strategy':<12}  {'Value':>8}  {'P&L':>8}  {'Return':>8}")
-    print(f"  {'─'*44}")
+    # ── Portfolio summary ─────────────────────────────────────────────────────
+    print(f"\n  Paper Portfolio  (started ${INITIAL_CAPITAL:.0f} each):")
+    print(f"  {'─'*52}")
+    print(f"  {'Strategy':<12}  {'Total':>8}  {'P&L':>8}  {'Ret%':>7}  {'Open':>5}")
+    print(f"  {'─'*52}")
     for strat in STRATEGIES:
-        val = portfolio[strat]
-        pnl = val - INITIAL_CAPITAL
-        ret = (val / INITIAL_CAPITAL - 1) * 100
-        bar = "+" if pnl >= 0 else ""
-        print(f"  {strat_labels[strat]:<12}  ${val:>7.2f}  {bar}{pnl:>+7.2f}  {ret:>+7.1f}%")
-    print(f"  {'─'*44}")
+        val      = portfolio[strat]
+        pnl      = val - INITIAL_CAPITAL
+        ret      = (val / INITIAL_CAPITAL - 1) * 100
+        n_open   = len(state[strat]["positions"])
+        print(f"  {STRAT_LABELS[strat]:<12}  ${val:>7.2f}  {pnl:>+8.2f}  {ret:>+6.1f}%  {n_open:>5}")
+    print(f"  {'─'*52}")
+
+    if closed:
+        print(f"\n  Closed this cycle:")
+        for r in closed:
+            icon = "W" if r["win"] else "L"
+            print(f"  [{icon}] {r['strategy']:<10} {r['coin']:<5}  "
+                  f"{r['ret_pct']:>+7.2f}%  ${r['pnl_usd']:>+7.3f}  "
+                  f"held {r['hold_cycles']} cycle(s)")
+
+    if opened:
+        print(f"\n  Opened this cycle:")
+        for r in opened:
+            print(f"  [+] {r['strategy']:<10} {r['coin']:<5}  "
+                  f"${r['size_usd']:.2f} @ ${r['entry_price']:,.4f}")
 
     # Consensus
     print(f"\n  Consensus:")
@@ -440,28 +473,27 @@ def main():
         strats = list(signals_by_coin[r["coin"]].values())
         n_buy  = sum(1 for s in strats if s == "BUY")
         n_out  = sum(1 for s in strats if s == "STAY OUT")
-        if   n_buy >= 4: verdict = f"STRONG BUY  ({n_buy}/5 agree)"
-        elif n_buy == 3: verdict = f"BUY         ({n_buy}/5 agree)"
-        elif n_buy == 2: verdict = f"Weak BUY    ({n_buy}/5 agree)"
-        elif n_out >= 3: verdict = f"STAY OUT    ({n_out}/5 agree)"
-        else:            verdict = "No consensus — skip"
-        print(f"    {r['coin']}: {verdict:<28} "
+        if   n_buy >= 4: verdict = f"STRONG BUY  ({n_buy}/5)"
+        elif n_buy == 3: verdict = f"BUY         ({n_buy}/5)"
+        elif n_buy == 2: verdict = f"Weak BUY    ({n_buy}/5)"
+        elif n_out >= 3: verdict = f"STAY OUT    ({n_out}/5)"
+        else:            verdict = "No consensus"
+        print(f"    {r['coin']}: {verdict:<20}  "
               f"RSI={r['d_rsi14']:.1f}  fund={r['funding_rate']:+.4f}%")
 
     print(f"\n  {'='*68}\n")
 
-    # ── Save comparison JSON ──────────────────────────────────────────────────
+    # ── Save JSON snapshot ────────────────────────────────────────────────────
     os.makedirs(DATA_DIR, exist_ok=True)
     with open(os.path.join(DATA_DIR, "strategy_comparison.json"), "w") as fh:
         json.dump({
-            "date":       date_str,
+            "date":      date_str,
+            "ts":        ts,
             "fear_greed": fear_greed,
-            "portfolio":  portfolio,
+            "portfolio": portfolio,
             "strategies": rows,
         }, fh, indent=2)
-    print(f"  ✓  Saved → data/strategy_comparison.json")
-    print(f"  ✓  Closed {len(closed)} / Opened {len(opened)} paper trades")
-    print(f"  ✓  Ledger → {LEDGER_FILE}")
+    print(f"  ✓  Closed {len(closed)}  Opened {len(opened)}  Ledger → {LEDGER_FILE}")
 
     # ── Telegram ──────────────────────────────────────────────────────────────
     def abbr(s: str) -> str:
@@ -469,9 +501,7 @@ def main():
                 "N/A": "N/A", "ERR": "ERR"}.get(s, s[:3])
 
     lines = [f"📊 <b>Strategy Comparison — {date_str}</b>\n"]
-
-    # Signal table
-    hdr = f"{'':6} {'Ens':>5} {'Fund':>5} {'RSI':>5} {'ML3':>5} {'ML5':>5}"
+    hdr   = f"{'':6} {'Ens':>5} {'Fund':>5} {'RSI':>5} {'ML3':>5} {'ML5':>5}"
     lines.append(f"<code>{hdr}</code>")
     for r in rows:
         ens  = r["ensemble"]
@@ -480,28 +510,23 @@ def main():
                 f"{abbr(r['rsi']):>5} {abbr(r['ml3']):>5} {abbr(r['ml5']):>5}")
         lines.append(f"{icon} <code>{row}</code>")
 
-    lines.append("")
-
-    # Portfolio summary
-    lines.append("<b>Paper Portfolio ($200 start each):</b>")
+    lines.append("\n<b>Paper Portfolio:</b>")
     for strat in STRATEGIES:
-        val = portfolio[strat]
-        pnl = val - INITIAL_CAPITAL
-        ret = (val / INITIAL_CAPITAL - 1) * 100
-        emoji = "📈" if pnl > 0 else "📉" if pnl < 0 else "➡️"
-        lines.append(f"{emoji} <code>{strat_labels[strat]:<12} ${val:>7.2f}  {ret:>+6.1f}%</code>")
+        val  = portfolio[strat]
+        ret  = (val / INITIAL_CAPITAL - 1) * 100
+        n_op = len(state[strat]["positions"])
+        em   = "📈" if ret > 0 else "📉" if ret < 0 else "➡️"
+        lines.append(
+            f"{em} <code>{STRAT_LABELS[strat]:<12} ${val:>7.2f}  {ret:>+6.1f}%  "
+            f"{n_op} open</code>"
+        )
 
-    lines.append("")
-
-    # Consensus
-    consensus_found = False
-    for r in rows:
-        n_buy = sum(1 for s in signals_by_coin[r["coin"]].values() if s == "BUY")
-        if n_buy >= 3:
-            lines.append(f"✅ {r['coin']}: {n_buy}/5 agree → BUY")
-            consensus_found = True
-    if not consensus_found:
-        lines.append("⚫ No strong consensus today")
+    if closed:
+        lines.append("")
+        for r in closed:
+            icon = "✅" if r["win"] else "❌"
+            lines.append(f"{icon} {r['strategy']} {r['coin']} closed  "
+                         f"{r['ret_pct']:>+.2f}%")
 
     lines.append(f"\nF&amp;G: {fear_greed}")
     lines.append("<i>⚠ Not financial advice.</i>")

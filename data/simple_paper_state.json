@@ -3,9 +3,9 @@
     "capital": 159.96,
     "positions": {
       "SOL": {
-        "entry_price": 83.88,
+        "entry_price": 84.29,
         "size_usd": 40.0,
-        "entry_ts": "2026-04-13 20:19"
+        "entry_ts": "2026-04-13 20:36"
       }
     }
   },
@@ -18,22 +18,17 @@
     "positions": {}
   },
   "ml3": {
-    "capital": 102.3232191984,
+    "capital": 127.936008,
     "positions": {
       "BTC": {
-        "entry_price": 73055.05,
+        "entry_price": 73237.71,
         "size_usd": 40.0,
-        "entry_ts": "2026-04-13 20:19"
-      },
-      "SOL": {
-        "entry_price": 83.88,
-        "size_usd": 31.992,
-        "entry_ts": "2026-04-13 20:19"
+        "entry_ts": "2026-04-13 20:36"
       },
       "LINK": {
-        "entry_price": 8.98,
-        "size_usd": 25.5872,
-        "entry_ts": "2026-04-13 20:19"
+        "entry_price": 9.0,
+        "size_usd": 31.992,
+        "entry_ts": "2026-04-13 20:36"
       }
     }
   },
@@ -41,19 +36,19 @@
     "capital": 102.3232191984,
     "positions": {
       "BTC": {
-        "entry_price": 73055.05,
+        "entry_price": 73237.71,
         "size_usd": 40.0,
-        "entry_ts": "2026-04-13 20:19"
+        "entry_ts": "2026-04-13 20:36"
       },
-      "SOL": {
-        "entry_price": 83.88,
+      "AVAX": {
+        "entry_price": 9.32,
         "size_usd": 31.992,
-        "entry_ts": "2026-04-13 20:19"
+        "entry_ts": "2026-04-13 20:36"
       },
       "LINK": {
-        "entry_price": 8.98,
+        "entry_price": 9.0,
         "size_usd": 25.5872,
-        "entry_ts": "2026-04-13 20:19"
+        "entry_ts": "2026-04-13 20:36"
       }
     }
   }
