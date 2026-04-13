@@ -146,85 +146,6 @@ def get_funding(symbol="BTCUSDT"):
     except: return {}
 
 
-def get_reddit_sentiment(coin: str) -> float:
-    """
-    Scrape hot posts from r/CryptoCurrency and coin-specific subreddit.
-    Returns score from -1.0 (very bearish) to +1.0 (very bullish).
-    No API key required.
-    """
-    BULLISH = ["bullish", "moon", "pump", "buy", "long", "breakout", "rally",
-               "support", "accumulate", "undervalued", "bounce", "uptrend"]
-    BEARISH = ["bearish", "dump", "sell", "short", "crash", "panic", "fear",
-               "warning", "rug", "scam", "overvalued", "downtrend", "collapse"]
-    SUBREDDITS = {
-        "BTC": "bitcoin", "ETH": "ethereum", "SOL": "solana",
-        "AVAX": "avax", "LINK": "Chainlink",
-    }
-    headers = {"User-Agent": "crypto-pipeline-sentiment/1.0"}
-    bull, bear = 0, 0
-    try:
-        subs = ["CryptoCurrency"]
-        if coin in SUBREDDITS:
-            subs.append(SUBREDDITS[coin])
-        for sub in subs:
-            r = requests.get(
-                f"https://www.reddit.com/r/{sub}/hot.json",
-                params={"limit": 30}, headers=headers, timeout=8
-            )
-            for post in r.json()["data"]["children"]:
-                title = post["data"]["title"].lower()
-                bull += sum(1 for w in BULLISH if w in title)
-                bear += sum(1 for w in BEARISH if w in title)
-    except Exception:
-        return 0.0
-    total = bull + bear
-    return round((bull - bear) / total, 3) if total > 0 else 0.0
-
-
-def get_coingecko_sentiment(coin: str) -> float:
-    """
-    Fetch community sentiment from CoinGecko (free, no API key).
-    Returns score from -1.0 (very bearish) to +1.0 (very bullish).
-    """
-    CG_IDS = {
-        "BTC": "bitcoin", "ETH": "ethereum", "SOL": "solana",
-        "AVAX": "avalanche-2", "LINK": "chainlink",
-    }
-    cg_id = CG_IDS.get(coin)
-    if not cg_id:
-        return 0.0
-    try:
-        r = requests.get(
-            f"https://api.coingecko.com/api/v3/coins/{cg_id}",
-            params={"localization": "false", "tickers": "false",
-                    "market_data": "false", "community_data": "true",
-                    "developer_data": "false"},
-            timeout=10
-        )
-        data    = r.json()
-        bull    = float(data.get("sentiment_votes_up_percentage") or 50)
-        bear    = 100 - bull
-        return round((bull - bear) / 100, 3)  # e.g. 70% bull → +0.40
-    except Exception:
-        return 0.0
-
-
-def get_sentiment(coin: str) -> dict:
-    """
-    Combine Reddit + CoinGecko community sentiment.
-    override=True means the BUY signal should be blocked.
-    """
-    reddit   = get_reddit_sentiment(coin)
-    coingecko = get_coingecko_sentiment(coin)
-    combined  = round(0.5 * reddit + 0.5 * coingecko, 3)
-    return {
-        "reddit":    reddit,
-        "coingecko": coingecko,
-        "combined":  combined,
-        "override":  combined < -0.4,   # block BUY if strongly negative
-    }
-
-
 def get_dxy():
     """Fetch latest DXY (US Dollar Index) value via yfinance."""
     try:
@@ -471,15 +392,6 @@ def main():
                 arrow     = "—"
                 kelly_pct = 0.0
 
-            # Sentiment filter — veto BUY if news/social sentiment is strongly negative
-            sentiment = get_sentiment(ticker)
-            if signal == "BUY / HOLD" and sentiment["override"]:
-                signal    = "SKIP — negative sentiment"
-                arrow     = "—"
-                kelly_pct = 0.0
-                print(f"  ⚠  Sentiment override: reddit={sentiment['reddit']:+.2f}  "
-                      f"coingecko={sentiment['coingecko']:+.2f}  combined={sentiment['combined']:+.2f}")
-
             if prob_up >= 0.65:     conf_label = "Strong"
             elif prob_up >= 0.55:   conf_label = "Moderate"
             elif prob_down >= 0.65: conf_label = "Strong (bearish)"
@@ -516,7 +428,6 @@ def main():
                 "fg_label":   fg.get("fg_label",""),
                 "funding":    funding.get("funding_rate",""),
                 "btc_dom":    btc_dom.get("btc_dominance",""),
-                "sentiment":  sentiment["combined"],
             })
 
         except Exception as e:
