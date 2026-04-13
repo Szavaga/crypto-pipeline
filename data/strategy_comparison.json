@@ -1,0 +1,73 @@
+{
+  "date": "2026-04-13",
+  "fear_greed": 12,
+  "portfolio": {
+    "ensemble": 199.96,
+    "fund": 200.0,
+    "rsi": 200.0,
+    "ml3": 199.9,
+    "ml5": 199.9
+  },
+  "strategies": [
+    {
+      "coin": "BTC",
+      "price": 73055.05,
+      "ensemble": "STAY OUT",
+      "fund": "SKIP",
+      "rsi": "SKIP",
+      "ml3": "BUY",
+      "ml5": "BUY",
+      "funding_rate": -0.0054,
+      "d_rsi14": 69.9,
+      "d_vol_ratio": 1.08
+    },
+    {
+      "coin": "ETH",
+      "price": 2248.07,
+      "ensemble": "STAY OUT",
+      "fund": "SKIP",
+      "rsi": "SKIP",
+      "ml3": "STAY OUT",
+      "ml5": "STAY OUT",
+      "funding_rate": 0.003,
+      "d_rsi14": 66.1,
+      "d_vol_ratio": 0.9
+    },
+    {
+      "coin": "SOL",
+      "price": 83.88,
+      "ensemble": "BUY",
+      "fund": "SKIP",
+      "rsi": "SKIP",
+      "ml3": "BUY",
+      "ml5": "BUY",
+      "funding_rate": 0.01,
+      "d_rsi14": 52.5,
+      "d_vol_ratio": 0.74
+    },
+    {
+      "coin": "AVAX",
+      "price": 9.37,
+      "ensemble": "N/A",
+      "fund": "SKIP",
+      "rsi": "SKIP",
+      "ml3": "STAY OUT",
+      "ml5": "SKIP",
+      "funding_rate": 0.0097,
+      "d_rsi14": 59.0,
+      "d_vol_ratio": 1.03
+    },
+    {
+      "coin": "LINK",
+      "price": 8.98,
+      "ensemble": "N/A",
+      "fund": "SKIP",
+      "rsi": "SKIP",
+      "ml3": "BUY",
+      "ml5": "BUY",
+      "funding_rate": -0.0063,
+      "d_rsi14": 56.9,
+      "d_vol_ratio": 0.89
+    }
+  ]
+}

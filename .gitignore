@@ -11,6 +11,9 @@ data/*
 !data/testnet_summary.json
 !data/signal_log.csv
 !data/dashboard_data.json
+!data/strategy_comparison.json
+!data/simple_paper_state.json
+!data/simple_paper_ledger.csv
 
 # ── Models — track pkl and charts, exclude old single-model files ──────────────
 models/*
