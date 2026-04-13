@@ -181,49 +181,47 @@ def get_reddit_sentiment(coin: str) -> float:
     return round((bull - bear) / total, 3) if total > 0 else 0.0
 
 
-def get_cryptopanic_sentiment(coin: str) -> float:
+def get_coingecko_sentiment(coin: str) -> float:
     """
-    Fetch news sentiment from CryptoPanic API.
-    Requires CRYPTOPANIC_TOKEN in .env — returns 0.0 if not configured.
-    Get a free token at: https://cryptopanic.com/developers/api/
+    Fetch community sentiment from CoinGecko (free, no API key).
+    Returns score from -1.0 (very bearish) to +1.0 (very bullish).
     """
-    token = os.environ.get("CRYPTOPANIC_TOKEN", "")
-    if not token:
+    CG_IDS = {
+        "BTC": "bitcoin", "ETH": "ethereum", "SOL": "solana",
+        "AVAX": "avalanche-2", "LINK": "chainlink",
+    }
+    cg_id = CG_IDS.get(coin)
+    if not cg_id:
         return 0.0
     try:
         r = requests.get(
-            "https://cryptopanic.com/api/v1/posts/",
-            params={"auth_token": token, "currencies": coin,
-                    "filter": "important", "kind": "news"},
+            f"https://api.coingecko.com/api/v3/coins/{cg_id}",
+            params={"localization": "false", "tickers": "false",
+                    "market_data": "false", "community_data": "true",
+                    "developer_data": "false"},
             timeout=10
         )
-        results = r.json().get("results", [])
-        bull = sum(1 for p in results
-                   if (p.get("votes") or {}).get("positive", 0) >
-                      (p.get("votes") or {}).get("negative", 0))
-        bear = sum(1 for p in results
-                   if (p.get("votes") or {}).get("negative", 0) >
-                      (p.get("votes") or {}).get("positive", 0))
-        total = bull + bear
-        return round((bull - bear) / total, 3) if total > 0 else 0.0
+        data    = r.json()
+        bull    = float(data.get("sentiment_votes_up_percentage") or 50)
+        bear    = 100 - bull
+        return round((bull - bear) / 100, 3)  # e.g. 70% bull → +0.40
     except Exception:
         return 0.0
 
 
 def get_sentiment(coin: str) -> dict:
     """
-    Combine Reddit + CryptoPanic into a single sentiment dict.
+    Combine Reddit + CoinGecko community sentiment.
     override=True means the BUY signal should be blocked.
     """
-    reddit      = get_reddit_sentiment(coin)
-    cryptopanic = get_cryptopanic_sentiment(coin)
-    has_cp      = bool(os.environ.get("CRYPTOPANIC_TOKEN", ""))
-    combined    = (0.6 * cryptopanic + 0.4 * reddit) if has_cp else reddit
+    reddit   = get_reddit_sentiment(coin)
+    coingecko = get_coingecko_sentiment(coin)
+    combined  = round(0.5 * reddit + 0.5 * coingecko, 3)
     return {
-        "reddit":      reddit,
-        "cryptopanic": cryptopanic,
-        "combined":    round(combined, 3),
-        "override":    combined < -0.4,   # block BUY if strongly negative
+        "reddit":    reddit,
+        "coingecko": coingecko,
+        "combined":  combined,
+        "override":  combined < -0.4,   # block BUY if strongly negative
     }
 
 
@@ -480,7 +478,7 @@ def main():
                 arrow     = "—"
                 kelly_pct = 0.0
                 print(f"  ⚠  Sentiment override: reddit={sentiment['reddit']:+.2f}  "
-                      f"cp={sentiment['cryptopanic']:+.2f}  combined={sentiment['combined']:+.2f}")
+                      f"coingecko={sentiment['coingecko']:+.2f}  combined={sentiment['combined']:+.2f}")
 
             if prob_up >= 0.65:     conf_label = "Strong"
             elif prob_up >= 0.55:   conf_label = "Moderate"
