@@ -48,6 +48,7 @@ def _tg(msg: str):
 # ── Constants ──────────────────────────────────────────────────────────────────
 
 TESTNET_BASE   = "https://testnet.binance.vision"
+BINANCE_BASE   = "https://api.binance.com"   # real Binance for market data (candles/ATR)
 DATA_DIR       = "data"
 POSITIONS_PATH = os.path.join(DATA_DIR, "testnet_positions.json")
 LEDGER_PATH    = os.path.join(DATA_DIR, "testnet_ledger.csv")
@@ -235,6 +236,78 @@ def get_current_price(symbol: str) -> float:
         )
         return float(resp.json()["price"])
     except Exception:
+        return 0.0
+
+
+def get_4h_confirmation(symbol: str) -> bool:
+    """
+    Check if the most recent 4H candle confirms a bullish bias.
+    Requires 4H RSI14 > 50 AND 4H MACD histogram > 0.
+    Uses real Binance (not testnet) for reliable candle data.
+    Returns True if confirmed, False if no confirmation (skip entry).
+    """
+    try:
+        resp = requests.get(
+            BINANCE_BASE + "/api/v3/klines",
+            params={"symbol": symbol, "interval": "4h", "limit": 30},
+            timeout=10
+        )
+        candles = resp.json()
+        closes  = [float(c[4]) for c in candles]
+        highs   = [float(c[2]) for c in candles]
+        lows    = [float(c[3]) for c in candles]
+
+        # RSI14
+        deltas = [closes[i] - closes[i-1] for i in range(1, len(closes))]
+        gains  = [d if d > 0 else 0 for d in deltas]
+        losses = [-d if d < 0 else 0 for d in deltas]
+        avg_gain = sum(gains[-14:]) / 14
+        avg_loss = sum(losses[-14:]) / 14
+        rsi = 100 - (100 / (1 + avg_gain / avg_loss)) if avg_loss > 0 else 100
+
+        # MACD (12, 26, 9) — simple EMA approximation
+        def ema(data, period):
+            k = 2 / (period + 1)
+            e = data[0]
+            for v in data[1:]:
+                e = v * k + e * (1 - k)
+            return e
+
+        macd_line   = ema(closes, 12) - ema(closes, 26)
+        signal_line = ema(closes[-9:], 9) if len(closes) >= 9 else macd_line
+        macd_hist   = macd_line - signal_line
+
+        confirmed = rsi > 50 and macd_hist > 0
+        print(f"  4H check: RSI={rsi:.1f}  MACD_hist={macd_hist:.4f}  → {'✓ confirmed' if confirmed else '✗ no confirm'}")
+        return confirmed
+    except Exception as e:
+        print(f"  ⚠  4H confirmation failed ({e}) — proceeding anyway")
+        return True  # fail open: don't block trades on API errors
+
+
+def get_atr14(symbol: str) -> float:
+    """
+    Fetch last 20 daily candles from real Binance and compute ATR14.
+    Returns ATR as an absolute price value (e.g. 2500.0 for BTC).
+    Returns 0.0 on failure (caller falls back to fixed SL/TP).
+    """
+    try:
+        resp = requests.get(
+            BINANCE_BASE + "/api/v3/klines",
+            params={"symbol": symbol, "interval": "1d", "limit": 20},
+            timeout=10
+        )
+        candles = resp.json()
+        trs = []
+        for i in range(1, len(candles)):
+            high  = float(candles[i][2])
+            low   = float(candles[i][3])
+            prev_close = float(candles[i-1][4])
+            tr = max(high - low, abs(high - prev_close), abs(low - prev_close))
+            trs.append(tr)
+        return sum(trs[-14:]) / 14 if len(trs) >= 14 else 0.0
+    except Exception as e:
+        print(f"  ⚠  ATR14 fetch failed ({e}) — using fixed SL/TP")
         return 0.0
 
 
@@ -712,6 +785,11 @@ def execute_entries(positions: dict, signals: dict, ledger: pd.DataFrame,
             print(f"  —  {coin} {status} (prob_up={prob_up:.1f}%)  balance=${pos['balance']:.2f}")
             continue
 
+        # 4H entry confirmation — skip if 4H momentum is not bullish
+        if not get_4h_confirmation(COIN_SYMBOLS[coin]):
+            print(f"  —  {coin} BUY signal but 4H not confirmed — skipping entry")
+            continue
+
         lot_info = lot_info_by_coin.get(coin, {})
         balance = pos["balance"]
         if balance < lot_info.get("min_notional", 10.0):
@@ -757,10 +835,20 @@ def execute_entries(positions: dict, signals: dict, ledger: pd.DataFrame,
         commission   = entry_cost * COMMISSION
         net_cost     = entry_cost + commission  # total cash spent (includes slippage + fee)
 
-        # Calculate OCO prices
+        # Calculate OCO prices — ATR-based if available, fixed fallback
         tick_size = lot_info["tick_size"]
-        tp_price  = entry_price * (1 + TP_PCT)
-        sl_price  = entry_price * (1 - SL_PCT)
+        atr = get_atr14(COIN_SYMBOLS[coin])
+        if atr > 0:
+            raw_sl_pct = atr / entry_price
+            # Clamp: SL between 2% and 8% of entry price
+            sl_pct = max(0.02, min(0.08, raw_sl_pct * 2))
+            tp_pct = sl_pct * 2   # maintain 2:1 R/R
+            print(f"  ATR14=${atr:,.2f}  → SL={sl_pct*100:.1f}%  TP={tp_pct*100:.1f}%")
+        else:
+            sl_pct = SL_PCT
+            tp_pct = TP_PCT
+        tp_price  = entry_price * (1 + tp_pct)
+        sl_price  = entry_price * (1 - sl_pct)
 
         # Place OCO sell order (SL + TP)
         oco_order_list_id = -1
