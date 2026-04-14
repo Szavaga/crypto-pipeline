@@ -1,4 +1,0 @@
-date,coin,action,price,quantity,value_usdt,commission,pnl,pnl_pct,balance_after,signal_confidence,kelly_pct,reason,order_id,oco_order_list_id
-2026-04-05 00:00:00,ETH,BUY,2061.98,0.0096,19.81,0.0198,0.0,0.0,180.19,56.2,10.0,Moderate,749541,-1
-2026-04-06,ETH,SELL_SIGNAL,2134.89,0.0096,20.47,0.0205,0.6596,3.33,200.66,5.6,0.0,SELL_SIGNAL — STAY OUT,966289,-1
-2026-04-11,SOL,BUY,84.9625,0.588,50.01,0.05,0.0,0.0,149.99,85.2,25.0,Strong,467715,-1
