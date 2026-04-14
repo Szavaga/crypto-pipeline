@@ -141,6 +141,23 @@ def init_schema():
     print("  ✓  DB schema ready")
 
 
+# ── Type helpers ──────────────────────────────────────────────────────────────
+
+def _f(v):
+    """Cast to plain Python float, or None."""
+    try: return float(v) if v is not None else None
+    except: return None
+
+def _i(v):
+    """Cast to plain Python int, or None."""
+    try: return int(v) if v is not None else None
+    except: return None
+
+def _s(v):
+    """Cast to plain Python str, or None."""
+    return str(v) if v is not None else None
+
+
 # ── Write helpers ─────────────────────────────────────────────────────────────
 
 def upsert_signal(s: dict):
@@ -170,19 +187,19 @@ def upsert_signal(s: dict):
         btc_dom     = EXCLUDED.btc_dom
     """
     row = {
-        "date":       s.get("date"),
-        "coin":       s.get("coin"),
-        "price":      s.get("price") or None,
-        "signal":     s.get("signal") or None,
-        "prob_up":    s.get("prob_up") or None,
-        "prob_down":  s.get("prob_down") or None,
-        "kelly_pct":  s.get("kelly_pct") or None,
-        "confidence": s.get("confidence") or None,
-        "mtf_score":  s.get("mtf_score") or None,
-        "fear_greed": s.get("fear_greed") or None,
-        "fg_label":   s.get("fg_label") or None,
-        "funding":    s.get("funding") or None,
-        "btc_dom":    s.get("btc_dom") or None,
+        "date":       _s(s.get("date")),
+        "coin":       _s(s.get("coin")),
+        "price":      _f(s.get("price")),
+        "signal":     _s(s.get("signal")),
+        "prob_up":    _f(s.get("prob_up")),
+        "prob_down":  _f(s.get("prob_down")),
+        "kelly_pct":  _f(s.get("kelly_pct")),
+        "confidence": _s(s.get("confidence")),
+        "mtf_score":  _i(s.get("mtf_score")),
+        "fear_greed": _i(s.get("fear_greed")),
+        "fg_label":   _s(s.get("fg_label")),
+        "funding":    _f(s.get("funding")),
+        "btc_dom":    _f(s.get("btc_dom")),
     }
     with _get_conn() as conn:
         with conn.cursor() as cur:
@@ -206,22 +223,22 @@ def insert_trade(account_type: str, t: dict):
          %(reason)s, %(order_id)s, %(oco_order_list_id)s)
     """
     row = {
-        "date":               t.get("date"),
+        "date":               _s(t.get("date")),
         "account_type":       account_type,
-        "coin":               t.get("coin"),
-        "action":             t.get("action"),
-        "price":              t.get("price") or None,
-        "quantity":           t.get("quantity") or None,
-        "value_usdt":         t.get("value_usdt") or t.get("value") or None,
-        "commission":         t.get("commission") or None,
-        "pnl":                t.get("pnl") or None,
-        "pnl_pct":            t.get("pnl_pct") or None,
-        "balance_after":      t.get("balance_after") or None,
-        "signal_confidence":  t.get("signal_confidence") or None,
-        "kelly_pct":          t.get("kelly_pct") or None,
-        "reason":             t.get("reason") or None,
-        "order_id":           str(t.get("order_id") or ""),
-        "oco_order_list_id":  int(t.get("oco_order_list_id") or -1),
+        "coin":               _s(t.get("coin")),
+        "action":             _s(t.get("action")),
+        "price":              _f(t.get("price")),
+        "quantity":           _f(t.get("quantity")),
+        "value_usdt":         _f(t.get("value_usdt") or t.get("value")),
+        "commission":         _f(t.get("commission")),
+        "pnl":                _f(t.get("pnl")),
+        "pnl_pct":            _f(t.get("pnl_pct")),
+        "balance_after":      _f(t.get("balance_after")),
+        "signal_confidence":  _f(t.get("signal_confidence")),
+        "kelly_pct":          _f(t.get("kelly_pct")),
+        "reason":             _s(t.get("reason")),
+        "order_id":           _s(t.get("order_id")) or "",
+        "oco_order_list_id":  _i(t.get("oco_order_list_id")) or -1,
     }
     with _get_conn() as conn:
         with conn.cursor() as cur:
@@ -262,17 +279,17 @@ def upsert_position(account_type: str, coin: str, p: dict):
         "account_type":       account_type,
         "coin":               coin,
         "in_position":        bool(p.get("in_position", False)),
-        "entry_price":        p.get("entry_price") or 0,
-        "quantity":           p.get("quantity") or 0,
-        "value_usdt":         p.get("value_usdt") or p.get("value") or 0,
-        "balance":            p.get("balance") or 0,
-        "sl_price":           p.get("sl_price") or 0,
-        "tp_price":           p.get("tp_price") or 0,
-        "confidence":         p.get("confidence") or 0,
-        "kelly_pct":          p.get("kelly_pct") or 0,
-        "entry_date":         p.get("entry_date") or None,
-        "entry_order_id":     str(p.get("entry_order_id") or ""),
-        "oco_order_list_id":  int(p.get("oco_order_list_id") or -1),
+        "entry_price":        _f(p.get("entry_price")) or 0,
+        "quantity":           _f(p.get("quantity")) or 0,
+        "value_usdt":         _f(p.get("value_usdt") or p.get("value")) or 0,
+        "balance":            _f(p.get("balance")) or 0,
+        "sl_price":           _f(p.get("sl_price")) or 0,
+        "tp_price":           _f(p.get("tp_price")) or 0,
+        "confidence":         _f(p.get("confidence")) or 0,
+        "kelly_pct":          _f(p.get("kelly_pct")) or 0,
+        "entry_date":         _s(p.get("entry_date")),
+        "entry_order_id":     _s(p.get("entry_order_id")) or "",
+        "oco_order_list_id":  _i(p.get("oco_order_list_id")) or -1,
     }
     with _get_conn() as conn:
         with conn.cursor() as cur:
