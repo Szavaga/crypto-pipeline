@@ -258,6 +258,37 @@ def build_live_features(symbol):
     combined.update(row_4h)
     combined.update(row_1h)
 
+    # ── Intraday aggregates (matches resample_to_daily in feature-engineering.py)
+    # For each intraday timeframe, compute stats across today's bars.
+    # feature-engineering.py groups by date and computes rsi_max/min, green_pct, n_bars.
+    try:
+        today = df_1d["date"].iloc[-1]
+        for feat_df, prefix in [(feat_4h, "h4"), (feat_1h, "h1")]:
+            today_mask = feat_df["date"] == today
+            today_bars = feat_df[today_mask]
+            if today_bars.empty:
+                today_bars = feat_df.tail(6 if prefix == "h4" else 24)
+            rsi_col = f"{prefix}_rsi14"
+            grn_col = f"{prefix}_is_green"
+            ret_col = f"{prefix}_ret1"
+            if rsi_col in today_bars.columns:
+                combined[f"{prefix}_rsi_max"]   = float(today_bars[rsi_col].max())
+                combined[f"{prefix}_rsi_min"]   = float(today_bars[rsi_col].min())
+            if grn_col in today_bars.columns:
+                combined[f"{prefix}_green_pct"] = float(today_bars[grn_col].mean())
+            if ret_col in today_bars.columns:
+                combined[f"{prefix}_n_bars"]    = int(today_bars[ret_col].count())
+    except Exception:
+        pass
+
+    # ── Regime strength (EMA50 vs EMA200 on daily — matches feature-engineering.py)
+    try:
+        ema50  = df_1d["close"].ewm(span=50,  adjust=False).mean().iloc[-1]
+        ema200 = df_1d["close"].ewm(span=200, adjust=False).mean().iloc[-1]
+        combined["regime_strength"] = round((ema50 - ema200) / ema200, 6) if ema200 else 0.0
+    except Exception:
+        pass
+
     # Add MTF confluence features
     try:
         combined["mtf_trend_agree"] = int(
