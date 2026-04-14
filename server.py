@@ -17,9 +17,10 @@ import subprocess
 import sys
 import threading
 from datetime import datetime, timezone
+from functools import wraps
 
 try:
-    from flask import Flask, Response, jsonify, send_file, abort
+    from flask import Flask, Response, jsonify, send_file, abort, request
 except ImportError:
     print("Flask is not installed. Run: pip install flask")
     sys.exit(1)
@@ -27,6 +28,30 @@ except ImportError:
 app    = Flask(__name__, static_folder=None)
 PYTHON = sys.executable
 PORT   = 8080
+
+# ── Basic Auth ────────────────────────────────────────────────────────────────
+_DASH_USER = os.getenv("DASH_USER", "crypto")
+_DASH_PASS = os.getenv("DASH_PASS", "")
+
+def _check_auth(username, password):
+    return username == _DASH_USER and password == _DASH_PASS and password != ""
+
+def require_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not _DASH_PASS:
+            return f(*args, **kwargs)   # no password set → open (dev mode)
+        auth = request.authorization
+        if not auth or not _check_auth(auth.username, auth.password):
+            return Response("Authentication required", 401,
+                            {"WWW-Authenticate": 'Basic realm="Crypto Dashboard"'})
+        return f(*args, **kwargs)
+    return decorated
+
+def auth_all(app):
+    """Apply require_auth to every route on the app."""
+    for endpoint, view_func in list(app.view_functions.items()):
+        app.view_functions[endpoint] = require_auth(view_func)
 
 # Force UTF-8 output from all subprocesses (fixes cp1250 UnicodeEncodeError on Windows)
 _UTF8_ENV = os.environ.copy()
@@ -345,10 +370,15 @@ def api_db_candles():
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
+    auth_all(app)
     print(f"\n{'='*52}")
     print(f"  Crypto Dashboard Server")
     print(f"  Dashboard : http://localhost:{PORT}")
     print(f"  Report    : http://localhost:{PORT}/report")
+    if _DASH_PASS:
+        print(f"  Auth      : user={_DASH_USER}")
+    else:
+        print(f"  Auth      : DISABLED (set DASH_PASS in .env)")
     print(f"  Press Ctrl+C to stop")
     print(f"{'='*52}\n")
     app.run(host="0.0.0.0", port=PORT, debug=False, threaded=True)
