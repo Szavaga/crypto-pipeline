@@ -19,8 +19,10 @@ LOG_PATH    = os.path.join(DATA_DIR, "signal_log.csv")
 JSON_PATH   = os.path.join(DATA_DIR, "dashboard_data.json")
 BINANCE_URL = "https://api.binance.com/api/v3/klines"
 
-COINS = {"BTC": "BTCUSDT", "ETH": "ETHUSDT", "SOL": "SOLUSDT"}
-YFINANCE_MAP = {"BTCUSDT": "BTC-USD", "ETHUSDT": "ETH-USD", "SOLUSDT": "SOL-USD"}
+COINS = {"BTC": "BTCUSDT", "ETH": "ETHUSDT", "SOL": "SOLUSDT",
+         "AVAX": "AVAXUSDT", "LINK": "LINKUSDT"}
+YFINANCE_MAP = {"BTCUSDT": "BTC-USD", "ETHUSDT": "ETH-USD", "SOLUSDT": "SOL-USD",
+                "AVAXUSDT": "AVAX-USD", "LINKUSDT": "LINK-USD"}
 
 
 def clean(obj):
@@ -156,7 +158,7 @@ def fetch_funding(symbol="ETHUSDT"):
 
 
 def load_signals():
-    result = {"BTC": [], "ETH": [], "SOL": []}
+    result = {"BTC": [], "ETH": [], "SOL": [], "AVAX": [], "LINK": []}
     if not os.path.exists(LOG_PATH):
         return result
     try:
@@ -187,7 +189,7 @@ def load_signals():
             df[col] = df[col].astype(str).str.replace("\u2014", "-", regex=False)
             df[col] = df[col].str.replace("\u2013", "-", regex=False)
 
-        for coin in ["BTC", "ETH", "SOL"]:
+        for coin in ["BTC", "ETH", "SOL", "AVAX", "LINK"]:
             rows = df[df["coin"] == coin].sort_values("date", ascending=False)
             result[coin] = rows.to_dict("records")
 
