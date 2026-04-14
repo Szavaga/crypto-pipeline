@@ -287,7 +287,7 @@ def upsert_position(account_type: str, coin: str, p: dict):
         "tp_price":           _f(p.get("tp_price")) or 0,
         "confidence":         _f(p.get("confidence")) or 0,
         "kelly_pct":          _f(p.get("kelly_pct")) or 0,
-        "entry_date":         _s(p.get("entry_date")),
+        "entry_date":         _s(p.get("entry_date")) or None,
         "entry_order_id":     _s(p.get("entry_order_id")) or "",
         "oco_order_list_id":  _i(p.get("oco_order_list_id")) or -1,
     }
