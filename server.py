@@ -44,6 +44,9 @@ _SAFE_DATA = {
     "testnet_summary.json",
     "testnet_positions.json",
     "testnet_ledger.csv",
+    "strategy_comparison.json",
+    "simple_paper_state.json",
+    "simple_paper_ledger.csv",
 }
 
 # ── Pipeline run state (shared between request threads) ──────────────────────

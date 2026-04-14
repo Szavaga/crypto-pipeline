@@ -334,6 +334,8 @@ footer{text-align:center;padding:20px;font-size:11px;color:var(--muted);border-t
       <div class="card"><canvas id="chart-ETH"></canvas></div>
       <div class="card"><canvas id="chart-BTC"></canvas></div>
       <div class="card"><canvas id="chart-SOL"></canvas></div>
+      <div class="card"><canvas id="chart-AVAX"></canvas></div>
+      <div class="card"><canvas id="chart-LINK"></canvas></div>
     </div>
   </section>
 
@@ -362,6 +364,11 @@ footer{text-align:center;padding:20px;font-size:11px;color:var(--muted);border-t
     <div class="g3" id="sig-stats"></div>
   </section>
 
+  <section id="strategies-section" style="display:none">
+    <div class="slabel">Strategy Comparison</div>
+    <div id="strategies-content"></div>
+  </section>
+
   <section>
     <div class="slabel">Signal History</div>
     <div class="twrap">
@@ -380,7 +387,7 @@ footer{text-align:center;padding:20px;font-size:11px;color:var(--muted);border-t
 </div>
 
 <script>
-const COIN_COLORS = {BTC:"#f59e0b", ETH:"#627eea", SOL:"#10b981"};
+const COIN_COLORS = {BTC:"#f59e0b", ETH:"#627eea", SOL:"#10b981", AVAX:"#e84142", LINK:"#2a5ada"};
 
 function fmt(p){
   if(!p) return "$0";
@@ -411,7 +418,7 @@ function tagClass(s){
 
 function buildTickers(D){
   const w = document.getElementById("tstrip");
-  ["BTC","ETH","SOL"].forEach(coin=>{
+  ["BTC","ETH","SOL","AVAX","LINK"].forEach(coin=>{
     const t = D.tickers[coin]||{};
     const up = (t.change||0)>=0;
     const vol = t.volume ? "$"+(t.volume/1e9).toFixed(1)+"B" : "-";
@@ -479,7 +486,7 @@ function buildHero(D){
 
 function buildMini(D){
   const w = document.getElementById("mini-signals");
-  ["BTC","SOL"].forEach(coin=>{
+  ["BTC","SOL","AVAX","LINK"].forEach(coin=>{
     const s = D.latest[coin]||{};
     const t = D.tickers[coin]||{};
     const up = (t.change||0)>=0;
@@ -591,7 +598,7 @@ function buildGlobal(D){
 
 function buildStats(D){
   const w = document.getElementById("sig-stats");
-  ["BTC","ETH","SOL"].forEach(coin=>{
+  ["BTC","ETH","SOL","AVAX","LINK"].forEach(coin=>{
     const s = D.stats[coin]||{};
     w.innerHTML += `<div class="card">
       <div style="font-size:13px;font-weight:700;color:${COIN_COLORS[coin]};margin-bottom:12px">${coin}</div>
@@ -612,7 +619,7 @@ function buildStats(D){
 function buildTable(D){
   const tbody = document.getElementById("hist-body");
   const rows  = [];
-  ["BTC","ETH","SOL"].forEach(coin=>{
+  ["BTC","ETH","SOL","AVAX","LINK"].forEach(coin=>{
     (D.signals[coin]||[]).forEach(s=>rows.push({...s, coin}));
   });
   rows.sort((a,b)=>(b.date||"").localeCompare(a.date||""));
@@ -745,7 +752,7 @@ function buildPerfCard(id, data, label, tagCls){
   let posHTML = "";
   if(id==="perf-testnet"){
     const coins = summary.coins||{};
-    const openRows = ["BTC","ETH","SOL"].map(coin=>{
+    const openRows = ["BTC","ETH","SOL","AVAX","LINK"].map(coin=>{
       const p = coins[coin]||{};
       if(!p.in_position) return `<div class="perf-pos-row"><span class="perf-pos-lbl" style="color:${COIN_COLORS[coin]||"#fff"}">${coin}</span><span style="color:var(--dim)">FLAT &nbsp; $${Number(p.balance||0).toFixed(2)}</span></div>`;
       const fmt = n => Number(n).toLocaleString("en-US",{maximumFractionDigits:2});
@@ -793,7 +800,7 @@ function buildPositions(T, D){
   const sec    = document.getElementById("positions-section");
   let anyOpen  = false;
 
-  ["BTC","ETH","SOL"].forEach(coin=>{
+  ["BTC","ETH","SOL","AVAX","LINK"].forEach(coin=>{
     const p = coins[coin]||{};
     if(!p.in_position) return;
     anyOpen = true;
@@ -843,15 +850,15 @@ fetch("data/dashboard_data.json?t="+Date.now())
     buildMarketPulse(D);
     buildHero(D);
     buildMini(D);
-    ["BTC","ETH","SOL"].forEach(c=>buildPriceChart(c,D));
+    ["BTC","ETH","SOL","AVAX","LINK"].forEach(c=>buildPriceChart(c,D));
     buildFG(D);
     buildGlobal(D);
     buildStats(D);
     buildTable(D);
     document.getElementById("loading").style.display = "none";
     document.getElementById("content").style.display = "block";
-    // Load trading performance from server (gracefully skipped if not available)
     fetch("/api/trading").then(r=>r.json()).then(T=>{ buildTrading(T); buildPositions(T, D); }).catch(()=>{});
+    fetch("data/strategy_comparison.json?t="+Date.now()).then(r=>r.json()).then(C=>buildStrategies(C)).catch(()=>{});
   })
   .catch(err=>{
     document.getElementById("loading").innerHTML =
@@ -860,8 +867,64 @@ fetch("data/dashboard_data.json?t="+Date.now())
        <div style="color:var(--muted)">Then: python server.py</div>`;
   });
 
-// Auto-refresh every 60s
-setTimeout(()=>location.reload(), 60000);
+// ── Strategy Comparison ───────────────────────────────────────────────────────
+function buildStrategies(C){
+  const sec = document.getElementById("strategies-section");
+  const w   = document.getElementById("strategies-content");
+  if(!C||!C.portfolio){sec.style.display="none";return;}
+  const INITIAL = 200;
+  const strats  = [
+    ["ensemble","Ensemble ML"],["fund","FundRate"],
+    ["rsi","RSI-MR"],["ml3","Simple3"],["ml5","Simple5"],
+  ];
+  const portHTML = strats.map(([key,label])=>{
+    const val = C.portfolio[key]||INITIAL;
+    const ret = (val/INITIAL-1)*100;
+    const col = ret>0?"var(--green)":ret<0?"var(--red)":"var(--dim)";
+    return `<div class="card2" style="text-align:center">
+      <div style="font-size:10px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">${label}</div>
+      <div style="font-size:20px;font-weight:700;color:${col}">${ret>=0?"+":""}${ret.toFixed(1)}%</div>
+      <div style="font-size:12px;color:var(--dim);margin-top:2px">$${val.toFixed(2)}</div>
+    </div>`;
+  }).join("");
+  const rowsHTML = ["BTC","ETH","SOL","AVAX","LINK"].map(coin=>{
+    const r = (C.strategies||[]).find(x=>x.coin===coin)||{};
+    return `<tr><td style="font-weight:700;color:${COIN_COLORS[coin]}">${coin}</td>`+
+      ["ensemble","fund","rsi","ml3","ml5"].map(s=>{
+        const sig=r[s]||"N/A";
+        const cls=sig==="BUY"?"tag-buy":sig==="STAY OUT"?"tag-out":"tag-skip";
+        return `<td><span class="tag ${cls}">${sig==="STAY OUT"?"OUT":sig}</span></td>`;
+      }).join("")+"</tr>";
+  }).join("");
+  w.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px">${portHTML}</div>
+    <div class="twrap"><table>
+      <thead><tr><th>Coin</th><th>Ensemble</th><th>FundRate</th><th>RSI-MR</th><th>Simple3</th><th>Simple5</th></tr></thead>
+      <tbody>${rowsHTML}</tbody>
+    </table></div>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px">Updated: ${C.ts||C.date||"—"} &nbsp;·&nbsp; Each strategy: $${INITIAL} starting capital</div>`;
+  sec.style.display = "block";
+}
+
+// Smooth refresh every 60s — updates prices/signals in place, no page reload
+function softRefresh(){
+  fetch("data/dashboard_data.json?t="+Date.now())
+    .then(r=>r.json())
+    .then(D=>{
+      document.getElementById("hdr-updated").textContent = D.updated||"";
+      document.getElementById("ftr-updated").textContent  = D.updated||"";
+      document.getElementById("tstrip").innerHTML = "";
+      buildTickers(D);
+      buildMarketPulse(D);
+      buildHero(D);
+      document.getElementById("mini-signals").innerHTML = "";
+      buildMini(D);
+      fetch("/api/trading").then(r=>r.json()).then(T=>{ buildTrading(T); buildPositions(T,D); }).catch(()=>{});
+      fetch("data/strategy_comparison.json?t="+Date.now()).then(r=>r.json()).then(C=>buildStrategies(C)).catch(()=>{});
+    })
+    .catch(()=>{});
+}
+setInterval(softRefresh, 60000);
 
 // ── Control button actions ────────────────────────────────────────────────────
 
