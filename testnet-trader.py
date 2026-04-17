@@ -382,21 +382,20 @@ def save_ledger(df: pd.DataFrame):
 def get_latest_signals(today: str) -> dict:
     """
     Read signal_log.csv, return most recent signal per coin for today only.
+    Uses the last-appended row for today so the 16:40 run always beats 08:40/00:40.
     Stale signal guard: skip if signal date != today (missed run protection).
     """
     if not os.path.exists(SIGNAL_LOG):
         return {}
 
     df = pd.read_csv(SIGNAL_LOG)
-    df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")
+    df["_date"] = pd.to_datetime(df["date"], errors="coerce").dt.strftime("%Y-%m-%d")
 
     latest = {}
     for coin in COINS:
-        rows = df[df["coin"] == coin].sort_values("date", ascending=False)
+        rows = df[(df["coin"] == coin) & (df["_date"] == today)]
         if not rows.empty:
-            row = rows.iloc[0].to_dict()
-            if row["date"] == today:
-                latest[coin] = row
+            latest[coin] = rows.iloc[-1].to_dict()  # last appended = most recent run
     return latest
 
 

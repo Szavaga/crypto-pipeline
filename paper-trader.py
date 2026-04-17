@@ -90,12 +90,13 @@ def get_latest_signals() -> dict:
         return {}
 
     df = pd.read_csv(SIGNAL_LOG)
-    df["date"] = pd.to_datetime(df["date"])
+    df["_date"] = pd.to_datetime(df["date"], errors="coerce").dt.strftime("%Y-%m-%d")
+    today = df["_date"].max()
     latest = {}
     for coin in COINS:
-        rows = df[df["coin"] == coin].sort_values("date", ascending=False)
+        rows = df[(df["coin"] == coin) & (df["_date"] == today)]
         if not rows.empty:
-            latest[coin] = rows.iloc[0].to_dict()
+            latest[coin] = rows.iloc[-1].to_dict()  # last appended = most recent run
     return latest
 
 
