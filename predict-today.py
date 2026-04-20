@@ -349,7 +349,8 @@ def ensemble_proba(artifacts, row_df):
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    now      = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    run_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     print(f"\n{'='*54}")
     print(f"  Daily Signal Generator v4 — Multi-Timeframe")
     print(f"  {now}")
@@ -446,7 +447,7 @@ def main():
             print()
 
             signals.append({
-                "date":       str(live["date"]),
+                "date":       run_date,
                 "coin":       ticker,
                 "price":      price,
                 "signal":     signal,
